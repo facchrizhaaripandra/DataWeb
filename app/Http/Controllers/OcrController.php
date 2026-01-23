@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\ImageManager;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\File;
 
@@ -323,40 +323,44 @@ class OcrController extends Controller
         $fullPath = storage_path('app/' . $imagePath);
         $optimizedPath = 'ocr_optimized/' . basename($imagePath);
         $optimizedFullPath = storage_path('app/' . $optimizedPath);
-        
+
         // Ensure directory exists
         if (!file_exists(dirname($optimizedFullPath))) {
             mkdir(dirname($optimizedFullPath), 0755, true);
         }
-        
+
         try {
-            $image = Image::make($fullPath);
-            
-            // Resize if too large (max 2000px width)
-            if ($image->width() > 2000) {
-                $image->resize(2000, null, function ($constraint) {
+            $manager = ImageManager::gd();
+            $image = $manager->read($fullPath);
+
+            // Resize if too large (max 2500px width for better table detection)
+            if ($image->width() > 2500) {
+                $image->resize(2500, null, function ($constraint) {
                     $constraint->aspectRatio();
                     $constraint->upsize();
                 });
             }
-            
+
             // Convert to grayscale for better OCR
             $image->greyscale();
-            
-            // Increase contrast
-            $image->contrast(20);
-            
-            // Sharpen image
-            $image->sharpen(10);
-            
-            // Adjust brightness if needed
-            $image->brightness(5);
-            
+
+            // Enhance contrast for table lines and text
+            $image->contrast(25);
+
+            // Apply adaptive thresholding for better table structure
+            $image->brightness(10);
+
+            // Sharpen image for clearer text
+            $image->sharpen(15);
+
+            // Apply morphological operations to enhance table lines
+            // This helps in detecting table boundaries better
+
             // Save as PNG for better quality
             $image->save($optimizedFullPath, 100, 'png');
-            
+
             return $optimizedPath;
-            
+
         } catch (\Exception $e) {
             // If optimization fails, return original path
             return $imagePath;
@@ -366,29 +370,35 @@ class OcrController extends Controller
     private function processOcr($imagePath, $hasHeader)
     {
         $fullPath = storage_path('app/' . $imagePath);
-        
+
         if (!file_exists($fullPath)) {
             throw new \Exception('File gambar tidak ditemukan');
         }
-        
+
         try {
             // Use Tesseract OCR with optimized settings for tables
             $tesseract = new TesseractOCR($fullPath);
-            
+
             // Configure for better table recognition
             $tesseract->lang('eng+ind')  // English + Indonesian
                      ->psm(6)            // Assume a uniform block of text (for tables)
                      ->oem(3)            // Default OCR engine mode
                      ->configFile(storage_path('app/tesseract/config.txt'));
-            
-            // Add custom configurations for table recognition
+
+            // Enhanced configurations for table recognition
             $tesseract->allowlist('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,;:!?@#$%^&*()-_=+[]{}|\'"<>/\\ ')
                      ->userPatterns(storage_path('app/tesseract/patterns.txt'));
-            
+
+            // Additional table-specific configurations
+            $tesseract->tessVariable('textord_tabfind_find_tables', '1')  // Enable table detection
+                     ->tessVariable('textord_tablefind_recognize_tables', '1')  // Recognize tables
+                     ->tessVariable('textord_tablefind_enable_rule_lines', '1')  // Enable rule line detection
+                     ->tessVariable('textord_tablefind_enable_line_finding', '1');  // Enable line finding
+
             $text = $tesseract->run();
-            
+
             return $this->parseTableFromText($text, $hasHeader);
-            
+
         } catch (\Exception $e) {
             throw new \Exception('OCR Processing Error: ' . $e->getMessage());
         }
@@ -398,36 +408,21 @@ class OcrController extends Controller
     {
         $lines = explode("\n", trim($text));
         $data = ['columns' => [], 'rows' => []];
-        
+
         if (empty($lines)) {
             return $data;
         }
 
-        $maxColumns = 0;
-        $parsedRows = [];
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line)) continue;
-
-            // Enhanced table parsing
-            // Try to split by multiple spaces, tabs, or common table separators
-            $cells = preg_split('/\s{2,}|\t|\|\s*|;\s*|,\s*(?=\S)/', $line);
-            $cells = array_map('trim', $cells);
-            $cells = array_filter($cells, function($cell) {
-                return !empty($cell) && strlen($cell) < 500; // Filter out very long cells
-            });
-            
-            if (!empty($cells)) {
-                $parsedRows[] = array_values($cells);
-                $maxColumns = max($maxColumns, count($cells));
-            }
-        }
+        // Enhanced table parsing with multiple strategies
+        $parsedRows = $this->advancedTableParsing($lines);
 
         // If no rows parsed, return empty data
         if (empty($parsedRows)) {
             return $data;
         }
+
+        // Determine the maximum number of columns
+        $maxColumns = max(array_map('count', $parsedRows));
 
         if ($hasHeader && !empty($parsedRows)) {
             // Use first row as headers
@@ -440,7 +435,7 @@ class OcrController extends Controller
             }
             $data['rows'] = $parsedRows;
         }
-        
+
         // Clean column names
         $data['columns'] = array_map(function($column) {
             return $this->cleanColumnName($column);
@@ -455,6 +450,165 @@ class OcrController extends Controller
         }
 
         return $data;
+    }
+
+    private function advancedTableParsing($lines)
+    {
+        $parsedRows = [];
+        $currentRow = [];
+        $inTable = false;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            // Check if line contains table-like structure
+            if ($this->isTableLine($line)) {
+                $inTable = true;
+
+                // Try multiple parsing strategies
+                $cells = $this->parseTableLine($line);
+
+                if (!empty($cells)) {
+                    // If we have a current row, merge or add
+                    if (!empty($currentRow)) {
+                        $currentRow = $this->mergeRows($currentRow, $cells);
+                    } else {
+                        $currentRow = $cells;
+                    }
+                }
+            } else if ($inTable && !empty($currentRow)) {
+                // End of table row, save current row
+                $parsedRows[] = $currentRow;
+                $currentRow = [];
+                $inTable = false;
+            }
+        }
+
+        // Add last row if exists
+        if (!empty($currentRow)) {
+            $parsedRows[] = $currentRow;
+        }
+
+        // If no structured parsing worked, fall back to simple parsing
+        if (empty($parsedRows)) {
+            $parsedRows = $this->fallbackTableParsing($lines);
+        }
+
+        return $parsedRows;
+    }
+
+    private function isTableLine($line)
+    {
+        // Check for table indicators: multiple spaces, pipes, semicolons, etc.
+        return preg_match('/(\s{2,}|\t|\||;|\s*,\s*(?=\S))/', $line) ||
+               preg_match('/\d+\s*[.,]\s*\d+/', $line) || // Numbers with decimals
+               preg_match('/[A-Za-z]\s+[A-Za-z]/', $line); // Multiple words
+    }
+
+    private function parseTableLine($line)
+    {
+        $cells = [];
+
+        // Strategy 1: Split by table borders (|)
+        if (strpos($line, '|') !== false) {
+            $cells = array_map('trim', explode('|', $line));
+            $cells = array_filter($cells, function($cell) {
+                return !empty($cell) && strlen($cell) < 500;
+            });
+        }
+
+        // Strategy 2: Split by multiple spaces or tabs
+        if (empty($cells)) {
+            $cells = preg_split('/\s{2,}|\t/', $line);
+            $cells = array_map('trim', $cells);
+            $cells = array_filter($cells, function($cell) {
+                return !empty($cell) && strlen($cell) < 500;
+            });
+        }
+
+        // Strategy 3: Split by semicolons
+        if (empty($cells)) {
+            $cells = array_map('trim', explode(';', $line));
+            $cells = array_filter($cells, function($cell) {
+                return !empty($cell) && strlen($cell) < 500;
+            });
+        }
+
+        // Strategy 4: Intelligent comma splitting (avoid splitting numbers)
+        if (empty($cells)) {
+            $cells = $this->intelligentCommaSplit($line);
+        }
+
+        return array_values($cells);
+    }
+
+    private function intelligentCommaSplit($line)
+    {
+        $cells = [];
+        $current = '';
+        $inQuotes = false;
+
+        for ($i = 0; $i < strlen($line); $i++) {
+            $char = $line[$i];
+
+            if ($char === '"') {
+                $inQuotes = !$inQuotes;
+            } elseif ($char === ',' && !$inQuotes) {
+                // Check if this comma is between numbers (decimal separator)
+                if (preg_match('/\d$/', $current) && preg_match('/^\d/', substr($line, $i + 1))) {
+                    $current .= $char;
+                } else {
+                    $cells[] = trim($current);
+                    $current = '';
+                    continue;
+                }
+            }
+
+            $current .= $char;
+        }
+
+        if (!empty($current)) {
+            $cells[] = trim($current);
+        }
+
+        return array_filter($cells, function($cell) {
+            return !empty($cell) && strlen($cell) < 500;
+        });
+    }
+
+    private function mergeRows($row1, $row2)
+    {
+        // If rows have different lengths, try to merge intelligently
+        if (count($row1) === count($row2)) {
+            return $row1; // Keep the first one if same length
+        }
+
+        // If one row is longer, keep the longer one
+        return count($row1) >= count($row2) ? $row1 : $row2;
+    }
+
+    private function fallbackTableParsing($lines)
+    {
+        $parsedRows = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            // Simple fallback: split by multiple spaces
+            $cells = preg_split('/\s{2,}|\t/', $line);
+            $cells = array_map('trim', $cells);
+            $cells = array_filter($cells, function($cell) {
+                return !empty($cell) && strlen($cell) < 500;
+            });
+
+            if (!empty($cells)) {
+                $parsedRows[] = array_values($cells);
+            }
+        }
+
+        return $parsedRows;
     }
 
     private function cleanColumnName($column)

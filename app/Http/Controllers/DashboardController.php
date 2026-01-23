@@ -19,15 +19,26 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        
+
+        // Get recently accessed datasets (owned + shared, ordered by last update)
+        $recentDatasets = Dataset::where(function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->orWhereHas('shares', function($subQuery) use ($user) {
+                      $subQuery->where('user_id', $user->id);
+                  });
+        })
+        ->with(['user', 'shares' => function($query) use ($user) {
+            $query->where('user_id', $user->id);
+        }])
+        ->orderBy('updated_at', 'desc')
+        ->limit(5)
+        ->get();
+
         $stats = [
             'total_datasets' => Dataset::where('user_id', $user->id)->count(),
             'total_imports' => Import::where('user_id', $user->id)->count(),
             'total_ocr' => OcrResult::where('user_id', $user->id)->count(),
-            'recent_datasets' => Dataset::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->limit(5)
-                ->get()
+            'recent_datasets' => $recentDatasets
         ];
 
         return view('dashboard.index', compact('stats'));

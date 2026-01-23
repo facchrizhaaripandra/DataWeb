@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatasetController;
+use App\Http\Controllers\DatasetShareController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\OcrController;
 use App\Http\Controllers\AdminController;
@@ -114,6 +115,16 @@ Route::middleware(['auth'])->group(function () {
         // Settings
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+    });
+
+    // Dataset Share Routes
+    Route::prefix('datasets/{id}/shares')->name('datasets.share.')->group(function () {
+        Route::get('/create', [DatasetShareController::class, 'create'])->name('create');
+        Route::post('/', [DatasetShareController::class, 'store'])->name('store');
+        Route::post('/bulk', [DatasetShareController::class, 'bulkShare'])->name('bulk');
+        Route::get('/', [DatasetShareController::class, 'show'])->name('show');
+        Route::put('/{userId}', [DatasetShareController::class, 'update'])->name('update');
+        Route::delete('/{userId}', [DatasetShareController::class, 'destroy'])->name('destroy');
     });
     
     // API Routes for AJAX calls

@@ -42,13 +42,60 @@ class User extends Authenticatable
         return $this->hasMany(OcrResult::class);
     }
 
+    public function sharedDatasets()
+    {
+        return $this->belongsToMany(Dataset::class, 'dataset_shares')
+                    ->withPivot('permission', 'shared_by')
+                    ->withTimestamps();
+    }
+
+    public function datasetShares()
+    {
+        return $this->hasMany(DatasetShare::class, 'shared_by');
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';
     }
 
-    public function isUser()
+    // Get all accessible datasets (own + shared + public)
+    public function accessibleDatasets()
     {
-        return $this->role === 'user';
+        // Own datasets
+        $ownDatasetIds = $this->datasets()->pluck('id');
+        
+        // Shared datasets
+        $sharedDatasetIds = $this->sharedDatasets()->pluck('datasets.id');
+        
+        // Public datasets (excluding own)
+        $publicDatasetIds = Dataset::where(function($query) {
+            $query->where('is_public', true)
+                  ->orWhere('access_type', 'public');
+        })
+        ->whereNotIn('id', $ownDatasetIds)
+        ->pluck('id');
+        
+        // Combine all dataset IDs
+        $allDatasetIds = $ownDatasetIds
+            ->merge($sharedDatasetIds)
+            ->merge($publicDatasetIds)
+            ->unique();
+        
+        return Dataset::whereIn('id', $allDatasetIds);
+    }
+
+    // Get users who can be shared with (excluding self and already shared)
+    public function getShareableUsers($dataset = null)
+    {
+        $query = User::where('id', '!=', $this->id);
+        
+        if ($dataset) {
+            // Exclude users already shared with this dataset
+            $alreadyShared = $dataset->shares()->pluck('user_id');
+            $query->whereNotIn('id', $alreadyShared);
+        }
+        
+        return $query->orderBy('name')->get();
     }
 }

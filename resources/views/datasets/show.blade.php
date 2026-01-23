@@ -470,21 +470,43 @@
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
-        <i class="fas fa-table me-2"></i> {{ $dataset->name }}
+        <i class="fas fa-table"></i> {{ $dataset->name }}
+        @if($dataset->user_id === auth()->id())
+            <span class="badge bg-warning">Owner</span>
+        @elseif($canEdit)
+            <span class="badge bg-success">Can Edit</span>
+        @else
+            <span class="badge bg-info">View Only</span>
+        @endif
+        
+        @if($dataset->is_public)
+            <span class="badge bg-primary">Public</span>
+        @endif
+        
         @if($dataset->description)
-            <small class="text-muted fs-6 ms-2">- {{ $dataset->description }}</small>
+            <small class="text-muted fs-6">- {{ $dataset->description }}</small>
         @endif
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a href="{{ route('datasets.index') }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-arrow-left"></i> Kembali
+                <i class="fas fa-arrow-left"></i> Back
             </a>
+            
+            @if($dataset->canEditDataset())
             <a href="{{ route('datasets.edit', $dataset->id) }}" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit Dataset
             </a>
+            @endif
+            
+            @if($dataset->user_id === auth()->id())
+            <a href="{{ route('datasets.share.create', $dataset->id) }}" class="btn btn-sm btn-outline-info">
+                <i class="fas fa-share-alt"></i> Share
+            </a>
+            @endif
+            
             <a href="{{ route('datasets.analyze', $dataset->id) }}" class="btn btn-sm btn-outline-info">
-                <i class="fas fa-chart-bar"></i> Analisis
+                <i class="fas fa-chart-bar"></i> Analyze
             </a>
             <button class="btn btn-sm btn-outline-success" onclick="exportData()">
                 <i class="fas fa-file-export"></i> Export
@@ -566,6 +588,7 @@
             <span class="badge bg-success column-badge">{{ count($dataset->columns) }} kolom</span>
         </h5>
         <div class="btn-group">
+            @if($canEdit)
             <button class="btn btn-sm btn-primary" id="addRowBtn">
                 <i class="fas fa-plus me-1"></i> Tambah Baris
             </button>
@@ -581,6 +604,7 @@
             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#manageColumnsModal">
                 <i class="fas fa-cog me-1"></i> Kelola Kolom
             </button>
+            @endif
         </div>
     </div>
     
@@ -639,10 +663,12 @@
                                 </th>
                             @endforeach
                             
+                            @if($canEdit)
                             <!-- Action column -->
                             <th class="fixed-action-column text-center">
                                 Aksi
                             </th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -671,21 +697,23 @@
                                 </td>
                             @endforeach
                             
+                            @if($canEdit)
                             <!-- Action cell -->
                             <td class="fixed-action-column">
                                 <div class="btn-group btn-group-sm d-flex justify-content-center">
-                                    <button class="btn btn-outline-secondary btn-row-action edit-row" 
+                                    <button class="btn btn-outline-secondary btn-row-action edit-row"
                                             data-row-id="{{ $row->id }}"
                                             title="Edit baris lengkap">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger btn-row-action delete-row" 
+                                    <button class="btn btn-outline-danger btn-row-action delete-row"
                                             data-row-id="{{ $row->id }}"
                                             title="Hapus baris">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </td>
+                            @endif
                         </tr>
                         @endforeach
                     </tbody>
@@ -726,6 +754,7 @@
                 <i class="fas fa-table empty-state-icon text-muted mb-3"></i>
                 <h4 class="text-muted">Belum ada data</h4>
                 <p class="text-muted mb-4">Mulai dengan menambahkan data melalui import Excel, OCR, atau tambah manual</p>
+                @if($canEdit)
                 <div class="d-flex justify-content-center gap-2">
                     <button class="btn btn-primary" id="addRowBtn">
                         <i class="fas fa-plus me-1"></i> Tambah Baris Manual
@@ -737,6 +766,12 @@
                         <i class="fas fa-image me-1"></i> Tambah dari Foto
                     </button>
                 </div>
+                @else
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Anda hanya memiliki akses view-only untuk dataset ini.
+                </div>
+                @endif
             </div>
         </div>
         @endif
@@ -792,6 +827,30 @@
         </div>
     </div>
 </div>
+
+<!-- Add sharing info section -->
+@if($sharedUsers && count($sharedUsers) > 1)
+<div class="alert alert-info mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-users"></i> 
+            <strong>Shared with {{ count($sharedUsers) - 1 }} user(s):</strong>
+            @foreach($sharedUsers as $shared)
+                @if($shared['user']->id !== $dataset->user_id)
+                    <span class="badge bg-light text-dark ms-1">
+                        {{ $shared['user']->name }} ({{ $shared['permission'] }})
+                    </span>
+                @endif
+            @endforeach
+        </div>
+        @if($dataset->user_id === auth()->id())
+        <a href="{{ route('datasets.share.show', $dataset->id) }}" class="btn btn-sm btn-outline-info">
+            <i class="fas fa-cog"></i> Manage Sharing
+        </a>
+        @endif
+    </div>
+</div>
+@endif
 
 <!-- Import Excel Modal -->
 <div class="modal fade" id="importModal" tabindex="-1">

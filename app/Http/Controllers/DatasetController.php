@@ -19,11 +19,22 @@ class DatasetController extends Controller
 
     public function index()
     {
-        $datasets = Dataset::where('user_id', auth()->id())
+        // Get owned datasets
+        $ownedDatasets = Dataset::where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
-        
-        return view('datasets.index', compact('datasets'));
+            ->get();
+
+        // Get shared datasets with permissions
+        $sharedDatasets = Dataset::whereHas('shares', function($query) {
+            $query->where('user_id', auth()->id());
+        })
+        ->with(['user', 'shares' => function($query) {
+            $query->where('user_id', auth()->id());
+        }])
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        return view('datasets.index', compact('ownedDatasets', 'sharedDatasets'));
     }
 
     public function create()
@@ -59,17 +70,27 @@ class DatasetController extends Controller
 
     public function addColumn(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit dataset structure (only owner and admin)
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
+
         $request->validate([
             'column_name' => 'required|string|max:255'
         ]);
-        
+
         $columns = $dataset->columns;
         $columns[] = $request->column_name;
-        
+
         $dataset->update(['columns' => $columns]);
-        
+
         // Add empty value for this column in all existing rows
         DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
             foreach ($rows as $row) {
@@ -78,26 +99,36 @@ class DatasetController extends Controller
                 $row->update(['data' => $data]);
             }
         });
-        
+
         return response()->json(['success' => true]);
     }
 
     public function renameColumn(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit dataset structure (only owner and admin)
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
+
         $request->validate([
             'old_name' => 'required|string',
             'new_name' => 'required|string|max:255'
         ]);
-        
+
         $columns = $dataset->columns;
         $index = array_search($request->old_name, $columns);
-        
+
         if ($index !== false) {
             $columns[$index] = $request->new_name;
             $dataset->update(['columns' => $columns]);
-            
+
             // Update all rows with new column name
             DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
                 foreach ($rows as $row) {
@@ -109,30 +140,40 @@ class DatasetController extends Controller
                     }
                 }
             });
-            
+
             return response()->json(['success' => true]);
         }
-        
+
         return response()->json(['success' => false], 400);
     }
 
     public function deleteColumn(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit dataset structure (only owner and admin)
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
+
         $request->validate([
             'column_name' => 'required|string'
         ]);
-        
+
         $columns = $dataset->columns;
         $index = array_search($request->column_name, $columns);
-        
+
         if ($index !== false) {
             unset($columns[$index]);
             $columns = array_values($columns); // Reindex array
-            
+
             $dataset->update(['columns' => $columns]);
-            
+
             // Remove column from all rows
             DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
                 foreach ($rows as $row) {
@@ -141,23 +182,33 @@ class DatasetController extends Controller
                     $row->update(['data' => $data]);
                 }
             });
-            
+
             return response()->json(['success' => true]);
         }
-        
+
         return response()->json(['success' => false], 400);
     }
 
     public function reorderColumns(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit dataset structure (only owner and admin)
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
+
         $request->validate([
             'columns' => 'required|array'
         ]);
-        
+
         $dataset->update(['columns' => $request->columns]);
-        
+
         // Reorder data in all rows according to new column order
         DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
             foreach ($rows as $row) {
@@ -168,27 +219,71 @@ class DatasetController extends Controller
                 $row->update(['data' => $newData]);
             }
         });
-        
+
         return response()->json(['success' => true]);
     }
 
     public function show($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         $rows = $dataset->rows()->paginate(50);
-        
-        return view('datasets.show', compact('dataset', 'rows'));
+
+        // Check if user can edit this dataset
+        $canEdit = $dataset->canEdit();
+
+        // Get shared users for this dataset
+        $sharedUsers = $dataset->shares()->with('user')->get()->map(function($share) {
+            return [
+                'user' => $share->user,
+                'permission' => $share->permission
+            ];
+        });
+
+        // Add owner to shared users list
+        $sharedUsers->prepend([
+            'user' => $dataset->user,
+            'permission' => 'owner'
+        ]);
+
+        return view('datasets.show', compact('dataset', 'rows', 'canEdit', 'sharedUsers'));
     }
 
     public function edit($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Only owner and admin can edit dataset metadata
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
+
         return view('datasets.edit', compact('dataset'));
     }
 
     public function update(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Only owner and admin can edit dataset metadata
+        if (!$dataset->canEditDataset()) {
+            abort(403);
+        }
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -218,8 +313,18 @@ class DatasetController extends Controller
 
     public function addRow(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $validator = Validator::make($request->all(), [
             'data' => 'required|array',
             'data.*' => 'nullable|string'
@@ -244,7 +349,18 @@ class DatasetController extends Controller
 
     public function editRow(Request $request, $datasetId, $rowId)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($datasetId);
+        $dataset = Dataset::findOrFail($datasetId);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $row = DatasetRow::where('dataset_id', $datasetId)->findOrFail($rowId);
 
         // Jika request AJAX untuk inline editing (single column)
@@ -252,7 +368,7 @@ class DatasetController extends Controller
             $data = $row->data;
             $data[$request->column] = $request->value;
             $row->update(['data' => $data]);
-            
+
             return response()->json(['success' => true]);
         }
         // Jika request untuk edit full row (form)
@@ -261,20 +377,31 @@ class DatasetController extends Controller
                 'data' => 'required|array',
                 'data.*' => 'nullable|string'
             ]);
-            
+
             $row->update(['data' => $request->data]);
-            
+
             return response()->json(['success' => true]);
         }
-        
+
         return response()->json(['success' => false, 'message' => 'Invalid request'], 400);
     }
 
     public function deleteRow($datasetId, $rowId)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($datasetId);
+        $dataset = Dataset::findOrFail($datasetId);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $row = DatasetRow::where('dataset_id', $datasetId)->findOrFail($rowId);
-        
+
         $row->delete();
         $dataset->decrement('row_count');
 
@@ -283,28 +410,49 @@ class DatasetController extends Controller
 
     public function editRowForm($datasetId, $rowId)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($datasetId);
+        $dataset = Dataset::findOrFail($datasetId);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $row = DatasetRow::where('dataset_id', $datasetId)->findOrFail($rowId);
-        
+
         $html = view('partials.edit-row-form', compact('dataset', 'row'))->render();
-        
+
         return response()->json(['html' => $html]);
     }
 
     public function deleteSelectedRows(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $request->validate([
             'row_ids' => 'required|array'
         ]);
-        
+
         $count = DatasetRow::where('dataset_id', $dataset->id)
             ->whereIn('id', $request->row_ids)
             ->delete();
-        
+
         $dataset->decrement('row_count', $count);
-        
+
         return response()->json([
             'success' => true,
             'count' => $count
@@ -313,16 +461,26 @@ class DatasetController extends Controller
 
     public function duplicateRows(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
         $request->validate([
             'row_ids' => 'required|array'
         ]);
-        
+
         $rows = DatasetRow::where('dataset_id', $dataset->id)
             ->whereIn('id', $request->row_ids)
             ->get();
-        
+
         $count = 0;
         foreach ($rows as $row) {
             DatasetRow::create([
@@ -331,9 +489,9 @@ class DatasetController extends Controller
             ]);
             $count++;
         }
-        
+
         $dataset->increment('row_count', $count);
-        
+
         return response()->json([
             'success' => true,
             'count' => $count
@@ -342,7 +500,17 @@ class DatasetController extends Controller
 
     public function importExcel(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit this dataset
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
 
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv'
@@ -350,7 +518,7 @@ class DatasetController extends Controller
 
         try {
             Excel::import(new DataImport($dataset), $request->file('file'));
-            
+
             return redirect()->back()
                 ->with('success', 'Data berhasil diimport!');
         } catch (\Exception $e) {
@@ -361,18 +529,29 @@ class DatasetController extends Controller
 
     public function export($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         return Excel::download(new DataExport($dataset), $dataset->name . '.xlsx');
     }
 
     public function analyze($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         $rows = $dataset->rows()->limit(1000)->get();
-        
+
         $analysis = $this->performAnalysis($rows, $dataset->columns);
-        
+
         return view('datasets.analysis', compact('dataset', 'analysis'));
     }
 
@@ -514,8 +693,13 @@ class DatasetController extends Controller
 
     public function getStats($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         $stats = [
             'total_rows' => $dataset->row_count,
             'total_columns' => count($dataset->columns),
@@ -523,17 +707,23 @@ class DatasetController extends Controller
             'updated_at' => $dataset->updated_at->format('Y-m-d H:i:s'),
             'row_distribution' => $this->getRowDistribution($dataset),
         ];
-        
+
         return response()->json($stats);
     }
 
     public function getRows($id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         $rows = $dataset->rows()
             ->orderBy('created_at', 'desc')
             ->paginate(50);
-        
+
         return response()->json([
             'data' => $rows->items(),
             'total' => $rows->total(),
@@ -545,10 +735,15 @@ class DatasetController extends Controller
 
     public function search(Request $request, $id)
     {
-        $dataset = Dataset::where('user_id', auth()->id())->findOrFail($id);
-        
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
         $searchTerm = $request->get('q', '');
-        
+
         $rows = DatasetRow::where('dataset_id', $dataset->id)
             ->where(function ($query) use ($searchTerm, $dataset) {
                 foreach ($dataset->columns as $column) {
@@ -556,7 +751,7 @@ class DatasetController extends Controller
                 }
             })
             ->paginate(50);
-        
+
         return response()->json([
             'data' => $rows->items(),
             'total' => $rows->total(),
