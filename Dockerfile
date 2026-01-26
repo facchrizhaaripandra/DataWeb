@@ -9,12 +9,13 @@ RUN apt-get update \
     libjpeg-dev \
     libpng-dev \
     libzip-dev \
+    libonig-dev \
+    pkg-config \
     zip \
     unzip \
     git \
     build-essential \
     autoconf \
-    pkg-config \
   && docker-php-ext-configure gd --with-freetype --with-jpeg \
   && docker-php-ext-install -j"$(nproc)" gd pdo pdo_mysql mbstring xml zip opcache \
   && apt-get purge -y --auto-remove build-essential autoconf pkg-config \
