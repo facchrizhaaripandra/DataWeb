@@ -2,8 +2,6 @@
 
 Aplikasi web berbasis Laravel untuk manajemen dataset dengan fitur autentikasi lengkap dan import data dari Excel.
 
-![Login System](https://private-user-images.githubusercontent.com/176025770/539717340-09f20c2d-ce15-4831-9f23-b93bb5193643.png)
-
 ## 📋 Daftar Isi
 
 - [Fitur Utama](#-fitur-utama)
@@ -110,16 +108,25 @@ Pastikan sistem Anda memiliki:
 ## 📸 Screenshot
 
 ### Dashboard
-![Dashboard](https://private-user-images.githubusercontent.com/176025770/539718110-f60acca8-5e76-4036-9f47-dfe72ce60af6.png)
+<img width="1919" height="921" alt="image" src="https://github.com/user-attachments/assets/11a30d94-6e61-43d0-bcf0-5ad787b9b1c4" />
 
 ### Datasets View
-![Datasets](https://private-user-images.githubusercontent.com/176025770/539718441-041b3079-ae95-49d8-b24d-0cb6e42a0c28.png)
+<img width="1916" height="925" alt="image" src="https://github.com/user-attachments/assets/af7286d9-6194-46c3-a210-f108d9c521dc" />
+<img width="1919" height="926" alt="image" src="https://github.com/user-attachments/assets/443c3aef-bbde-4438-b040-0ef595b8b689" />
+
 
 ### Import Excel
-![Import Excel](https://private-user-images.githubusercontent.com/176025770/539720406-a51a6a5a-98ee-4901-9334-84ec8231f6f0.png)
+<img width="1919" height="923" alt="image" src="https://github.com/user-attachments/assets/5fc25bfb-c8fd-43cd-842f-d09886935b29" />
+<img width="1919" height="929" alt="image" src="https://github.com/user-attachments/assets/d7827520-1af6-468f-868b-75e933787b7c" />
+<img width="1898" height="920" alt="image" src="https://github.com/user-attachments/assets/0814fa0b-4912-4d6f-910c-af5717d7c6af" />
+
+### Share Datasets
+<img width="1894" height="922" alt="image" src="https://github.com/user-attachments/assets/958ce953-b810-47bc-ab8b-4c7848e1cfae" />
+<img width="1894" height="709" alt="image" src="https://github.com/user-attachments/assets/987c0cb1-0e81-4ff3-bfb7-197ce8752243" />
 
 ### Admin Panel
-![Admin Panel](https://private-user-images.githubusercontent.com/176025770/539719630-5ccf31bb-c2c3-4540-9b7b-bf859b473b85.png)
+<img width="1902" height="768" alt="image" src="https://github.com/user-attachments/assets/d86113b5-0972-4270-9064-2b2f02128fe4" />
+<img width="1901" height="925" alt="image" src="https://github.com/user-attachments/assets/adb26bd0-8e40-4455-84de-4412aa6a9036" />
 
 ## 📁 Struktur Folder
 
