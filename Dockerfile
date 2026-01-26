@@ -16,7 +16,7 @@ RUN apt-get update \
     git \
     build-essential \
     autoconf \
-  && docker-php-ext-configure gd --with-freetype=/usr/include/freetype2 --with-jpeg=/usr/include \
+  && docker-php-ext-configure gd --with-freetype-dir=/usr/include/freetype2 --with-jpeg-dir=/usr/include --with-png-dir=/usr/include \
   && docker-php-ext-install -j"$(nproc)" gd pdo pdo_mysql mbstring xml zip opcache \
   && apt-get purge -y --auto-remove build-essential autoconf pkg-config \
   && rm -rf /var/lib/apt/lists/*
