@@ -9,12 +9,8 @@ Aplikasi web berbasis Laravel untuk manajemen dataset dengan fitur autentikasi l
 - [Fitur Utama](#-fitur-utama)
 - [Teknologi](#-teknologi)
 - [Persyaratan Sistem](#-persyaratan-sistem)
-- [Instalasi](#-instalasi)
-- [Konfigurasi](#-konfigurasi)
 - [Penggunaan](#-penggunaan)
 - [Screenshot](#-screenshot)
-- [Kontribusi](#-kontribusi)
-- [Lisensi](#-lisensi)
 
 ## ✨ Fitur Utama
 
@@ -182,49 +178,6 @@ php artisan view:clear
 # Compile ulang assets
 npm run dev
 ```
-
-## 🤝 Kontribusi
-
-Kontribusi sangat diterima! Untuk berkontribusi:
-
-1. Fork repository ini
-2. Buat branch fitur baru (`git checkout -b fitur-baru`)
-3. Commit perubahan (`git commit -m 'Menambahkan fitur baru'`)
-4. Push ke branch (`git push origin fitur-baru`)
-5. Buat Pull Request
-
-## 📝 Changelog
-
-### Version 1.0.0 (Current)
-- ✅ Sistem autentikasi lengkap
-- ✅ CRUD Dataset
-- ✅ Import Excel
-- ✅ Admin panel
-- ✅ Responsive UI
-
-## 📄 Lisensi
-
-Project ini dilisensikan di bawah [MIT License](LICENSE).
-
-## 👨‍💻 Author
-
-**Facchrizha Aripandra**
-
-- GitHub: [@facchrizhaaripandra](https://github.com/facchrizhaaripandra)
-
-## 🙏 Acknowledgments
-
-- Laravel Framework
-- Bootstrap/Tailwind CSS
-- Laravel Excel
-- Font Awesome Icons
-
-## 📞 Support
-
-Jika Anda menemukan bug atau memiliki pertanyaan, silakan:
-
-- Buka [Issue](https://github.com/facchrizhaaripandra/DataWeb/issues)
-- Email: facchrizhaaripandra@example.com
 
 ---
 
