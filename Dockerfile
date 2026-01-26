@@ -8,6 +8,7 @@ RUN apt-get update \
     libfreetype6-dev \
     libjpeg-dev \
     libpng-dev \
+    libxml2-dev \
     libzip-dev \
     libonig-dev \
     pkg-config \
