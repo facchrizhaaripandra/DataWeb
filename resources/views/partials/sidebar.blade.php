@@ -51,13 +51,7 @@
                 </a>
             </li>
             
-            <!-- OCR -->
-            <li class="nav-item">
-                <a class="nav-link {{ request()->is('ocr*') ? 'active' : '' }}" href="{{ route('ocr.index') }}">
-                    <i class="fas fa-image"></i>
-                    <span>OCR from Image</span>
-                </a>
-            </li>
+
             
             <!-- Analytics -->
             <li class="nav-item">

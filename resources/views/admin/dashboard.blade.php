@@ -71,22 +71,6 @@
             </div>
         </div>
     </div>
-    
-    <div class="col-md-3">
-        <div class="card stat-card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="card-title">Total OCR</h5>
-                        <h2 class="mb-0">{{ $stats['total_ocr'] }}</h2>
-                    </div>
-                    <div>
-                        <i class="fas fa-image fa-3x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="row">

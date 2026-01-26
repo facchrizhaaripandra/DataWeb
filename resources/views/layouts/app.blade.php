@@ -262,12 +262,12 @@
             }
         }
         
-        /* Dropdown fixes */
-        .dropdown {
+        /* Navbar dropdown fixes */
+        .navbar .dropdown {
             position: relative;
         }
-        
-        .dropdown-menu {
+
+        .navbar .dropdown-menu {
             z-index: 1050 !important;
             position: fixed !important;
             min-width: 200px;
@@ -279,8 +279,8 @@
             top: 56px !important; /* Height of navbar */
             right: 1rem !important; /* Right margin */
         }
-        
-        .dropdown-menu.show {
+
+        .navbar .dropdown-menu.show {
             display: block !important;
         }
         
@@ -332,9 +332,7 @@
                         <i class="fas fa-file-import me-2"></i> Import Excel
                     </a>
                     
-                    <a href="{{ route('ocr.index') }}" class="list-group-item list-group-item-action bg-transparent text-white border-0 mb-1">
-                        <i class="fas fa-image me-2"></i> OCR dari Foto
-                    </a>
+
                     
                     <a href="{{ route('dashboard.analytics') }}" class="list-group-item list-group-item-action bg-transparent text-white border-0 mb-1">
                         <i class="fas fa-chart-bar me-2"></i> Analisis
@@ -375,7 +373,7 @@
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav ms-auto">
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" aria-expanded="false">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-user me-1"></i> {{ Auth::user()->name ?? 'Guest' }}
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -507,46 +505,24 @@
             // Force no horizontal scroll
             document.body.style.overflowX = 'hidden';
             document.documentElement.style.overflowX = 'hidden';
-            
-            // Initialize dropdowns manually to ensure they work
-            const dropdowns = document.querySelectorAll('.dropdown-toggle');
-            dropdowns.forEach(function(dropdown) {
-                dropdown.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const menu = this.nextElementSibling;
-                    if (menu && menu.classList.contains('dropdown-menu')) {
-                        // Close other dropdowns
-                        document.querySelectorAll('.dropdown-menu.show').forEach(function(openMenu) {
-                            if (openMenu !== menu) {
-                                openMenu.classList.remove('show');
-                            }
-                        });
-                        // Toggle this dropdown
-                        menu.classList.toggle('show');
-                    }
-                });
+
+            // Initialize Bootstrap dropdowns
+            const dropdownElements = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            dropdownElements.forEach(function(element) {
+                new bootstrap.Dropdown(element);
             });
-            
-            // Close dropdowns when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.dropdown')) {
-                    document.querySelectorAll('.dropdown-menu.show').forEach(function(menu) {
-                        menu.classList.remove('show');
-                    });
-                }
-            });
-            
+
             // Fix DataTables width issues
             if ($.fn.dataTable.isDataTable('table')) {
                 $('table').DataTable().columns.adjust().responsive.recalc();
             }
-            
+
             // Adjust table widths
             $('table').each(function() {
                 $(this).css('width', '100%');
                 $(this).parent().css('overflow-x', 'hidden');
             });
-            
+
             // Make all containers full width
             $('.container, .container-fluid').addClass('no-scroll-x full-width');
         });

@@ -154,7 +154,7 @@
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-image me-2"></i> Total OCR</span>
-                        <span class="badge bg-info rounded-pill">{{ $user->ocrResults()->count() }}</span>
+
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <span><i class="fas fa-calendar me-2"></i> Bergabung</span>

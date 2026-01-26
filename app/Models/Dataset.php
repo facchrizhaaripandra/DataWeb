@@ -14,7 +14,6 @@ class Dataset extends Model
         'description',
         'is_public',
         'access_type',
-        'shared_with',
         'columns',
         'row_count',
         'user_id'
@@ -22,9 +21,61 @@ class Dataset extends Model
 
     protected $casts = [
         'columns' => 'array',
-        'shared_with' => 'array',
         'is_public' => 'boolean'
     ];
+
+    protected $appends = [
+        'column_definitions'
+    ];
+
+    /**
+     * Get column names as array
+     */
+    public function getColumnNamesAttribute()
+    {
+        if (!$this->columns) return [];
+
+        return array_map(function($column) {
+            return is_array($column) ? ($column['name'] ?? '') : $column;
+        }, $this->columns);
+    }
+
+
+
+    /**
+     * Get column type by name
+     */
+    public function getColumnType($columnName)
+    {
+        $definitions = $this->column_definitions;
+        foreach ($definitions as $def) {
+            if ($def['name'] === $columnName) {
+                return $def['type'] ?? 'string';
+            }
+        }
+        return 'string';
+    }
+
+    /**
+     * Set column type
+     */
+    public function setColumnType($columnName, $type)
+    {
+        $columns = $this->columns;
+        foreach ($columns as &$column) {
+            if (is_array($column) && $column['name'] === $columnName) {
+                $column['type'] = $type;
+            } elseif ($column === $columnName) {
+                // Convert old format
+                $column = [
+                    'name' => $columnName,
+                    'type' => $type
+                ];
+            }
+        }
+        $this->columns = $columns;
+        $this->save();
+    }
 
     public function user()
     {
@@ -41,10 +92,7 @@ class Dataset extends Model
         return $this->hasMany(Import::class);
     }
 
-    public function ocrResults()
-    {
-        return $this->hasMany(OcrResult::class);
-    }
+
 
     public function shares()
     {
@@ -81,11 +129,6 @@ class Dataset extends Model
 
         // Check if dataset is public
         if ($this->is_public || $this->access_type === 'public') {
-            return true;
-        }
-
-        // Check if user is in shared_with array
-        if ($this->shared_with && in_array($user->id, $this->shared_with)) {
             return true;
         }
 
@@ -155,14 +198,6 @@ class Dataset extends Model
             $sharedBy = auth()->id();
         }
 
-        // Add to shared_with array
-        $sharedWith = $this->shared_with ?? [];
-        if (!in_array($userId, $sharedWith)) {
-            $sharedWith[] = $userId;
-            $this->shared_with = $sharedWith;
-            $this->save();
-        }
-
         // Create or update share record
         return DatasetShare::updateOrCreate(
             [
@@ -179,12 +214,6 @@ class Dataset extends Model
     // Remove share with user
     public function removeShare($userId)
     {
-        // Remove from shared_with array
-        $sharedWith = $this->shared_with ?? [];
-        $sharedWith = array_diff($sharedWith, [$userId]);
-        $this->shared_with = array_values($sharedWith);
-        $this->save();
-
         // Remove from shares table
         return $this->shares()->where('user_id', $userId)->delete();
     }
@@ -215,5 +244,27 @@ class Dataset extends Model
         }
 
         return $users;
+    }
+
+    /**
+     * Get column definitions with names and types
+     */
+    public function getColumnDefinitionsAttribute()
+    {
+        $columns = $this->columns ?? [];
+
+        return collect($columns)->map(function ($column) {
+            if (is_array($column) && isset($column['name']) && isset($column['type'])) {
+                return $column;
+            } elseif (is_string($column)) {
+                // Backward compatibility - convert string to array format
+                return [
+                    'name' => $column,
+                    'type' => 'string'
+                ];
+            }
+
+            return null;
+        })->filter()->values()->all();
     }
 }

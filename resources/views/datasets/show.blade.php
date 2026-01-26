@@ -508,9 +508,22 @@
             <a href="{{ route('datasets.analyze', $dataset->id) }}" class="btn btn-sm btn-outline-info">
                 <i class="fas fa-chart-bar"></i> Analyze
             </a>
-            <button class="btn btn-sm btn-outline-success" onclick="exportData()">
-                <i class="fas fa-file-export"></i> Export
-            </button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="exportData('excel')">
+                        <i class="fas fa-file-excel text-success"></i> Export to Excel
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('pdf')">
+                        <i class="fas fa-file-pdf text-danger"></i> Export to PDF
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('image')">
+                        <i class="fas fa-image text-info"></i> Export to Image
+                    </a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
@@ -598,9 +611,7 @@
             <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#importModal">
                 <i class="fas fa-file-import me-1"></i> Import Excel
             </button>
-            <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#ocrModal">
-                <i class="fas fa-image me-1"></i> OCR dari Foto
-            </button>
+
             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#manageColumnsModal">
                 <i class="fas fa-cog me-1"></i> Kelola Kolom
             </button>
@@ -640,20 +651,21 @@
                             </th>
                             
                             <!-- Data columns -->
-                            @foreach($dataset->columns as $column)
-                                <th class="column-header" data-column="{{ $column }}">
+                            @foreach($dataset->column_definitions as $columnDef)
+                                <th class="column-header" data-column="{{ $columnDef['name'] }}">
                                     <div class="d-flex justify-content-between align-items-center position-relative">
-                                        <span class="column-name" title="{{ $column }}">
-                                            {{ $column }}
-                                        </span>
+                                        <div class="column-name" title="{{ $columnDef['name'] }} ({{ $columnDef['type'] }})">
+                                            {{ $columnDef['name'] }}
+                                            <small class="text-muted d-block">{{ ucfirst($columnDef['type']) }}</small>
+                                        </div>
                                         <div class="column-actions">
-                                            <button class="btn btn-xs btn-outline-warning btn-column-action" 
-                                                    onclick="renameColumn('{{ $column }}')"
+                                            <button class="btn btn-xs btn-outline-warning btn-column-action"
+                                                    onclick="renameColumn('{{ $columnDef['name'] }}')"
                                                     title="Ubah nama kolom">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-xs btn-outline-danger btn-column-action" 
-                                                    onclick="deleteColumn('{{ $column }}')"
+                                            <button class="btn btn-xs btn-outline-danger btn-column-action"
+                                                    onclick="deleteColumn('{{ $columnDef['name'] }}')"
                                                     title="Hapus kolom">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -686,13 +698,13 @@
                             </td>
                             
                             <!-- Data cells -->
-                            @foreach($dataset->columns as $column)
-                                <td class="editable-cell" 
-                                    data-column="{{ $column }}" 
+                            @foreach($dataset->column_definitions as $columnDef)
+                                <td class="editable-cell"
+                                    data-column="{{ $columnDef['name'] }}"
                                     data-row-id="{{ $row->id }}"
-                                    data-original-value="{{ $row->data[$column] ?? '' }}">
-                                    <div class="cell-content" title="{{ $row->data[$column] ?? '' }}">
-                                        {{ $row->data[$column] ?? '' }}
+                                    data-original-value="{{ $row->data[$columnDef['name']] ?? '' }}">
+                                    <div class="cell-content" title="{{ $row->data[$columnDef['name']] ?? '' }}">
+                                        {{ $row->data[$columnDef['name']] ?? '' }}
                                     </div>
                                 </td>
                             @endforeach
@@ -762,9 +774,7 @@
                     <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#importModal">
                         <i class="fas fa-file-import me-1"></i> Import dari Excel
                     </button>
-                    <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#ocrModal">
-                        <i class="fas fa-image me-1"></i> Tambah dari Foto
-                    </button>
+
                 </div>
                 @else
                 <div class="alert alert-info">
@@ -792,22 +802,25 @@
             <div class="modal-body">
                 <form id="addRowForm">
                     <div class="row">
-                        @foreach($dataset->columns as $column)
+                        @foreach($dataset->column_definitions as $columnDef)
                         <div class="col-md-4 mb-3">
                             <label for="column_{{ $loop->index }}" class="form-label">
-                                {{ $column }}
-                                @if(in_array(strtolower($column), ['email', 'e-mail', 'mail']))
+                                {{ $columnDef['name'] }}
+                                @if(in_array(strtolower($columnDef['name']), ['email', 'e-mail', 'mail']))
                                     <span class="text-muted small">(email)</span>
-                                @elseif(in_array(strtolower($column), ['phone', 'telp', 'telepon', 'hp', 'no hp']))
+                                @elseif(in_array(strtolower($columnDef['name']), ['phone', 'telp', 'telepon', 'hp', 'no hp']))
                                     <span class="text-muted small">(telepon)</span>
-                                @elseif(in_array(strtolower($column), ['date', 'tanggal', 'tgl', 'waktu']))
+                                @elseif(in_array(strtolower($columnDef['name']), ['date', 'tanggal', 'tgl', 'waktu']))
                                     <span class="text-muted small">(tanggal)</span>
                                 @endif
+                                <small class="text-muted d-block">{{ ucfirst($columnDef['type']) }}</small>
                             </label>
-                            <input type="text" class="form-control" 
-                                   id="column_{{ $loop->index }}" 
-                                   name="data[{{ $column }}]" 
-                                   placeholder="Masukkan {{ $column }}">
+                            <input type="{{ $columnDef['type'] === 'date' ? 'date' : ($columnDef['type'] === 'boolean' ? 'checkbox' : 'text') }}"
+                                   class="form-control"
+                                   id="column_{{ $loop->index }}"
+                                   name="data[{{ $columnDef['name'] }}]"
+                                   placeholder="Masukkan {{ $columnDef['name'] }}"
+                                   {{ $columnDef['type'] === 'boolean' ? 'value="1"' : '' }}>
                         </div>
                         @endforeach
                     </div>
@@ -911,78 +924,7 @@
     </div>
 </div>
 
-<!-- OCR Modal -->
-<div class="modal fade" id="ocrModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <form action="{{ route('ocr.store') }}" method="POST" enctype="multipart/form-data" id="ocrForm">
-                @csrf
-                <input type="hidden" name="dataset_id" value="{{ $dataset->id }}">
-                <input type="hidden" name="dataset_name" value="{{ $dataset->name }} - OCR {{ date('Y-m-d') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-image me-2"></i> Tambah Data dari Foto
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="ocrImage" class="form-label">Pilih Foto Tabel</label>
-                        <input type="file" class="form-control" 
-                               id="ocrImage" name="image" 
-                               accept="image/*" 
-                               onchange="previewOcrImage(this)" required>
-                        <div class="form-text">
-                            Upload foto yang berisi tabel data. Pastikan teks terbaca jelas.
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3" id="ocrImagePreviewContainer" style="display: none;">
-                        <label class="form-label">Pratinjau Gambar</label>
-                        <div class="border rounded p-2 text-center bg-light">
-                            <img id="ocrImagePreview" src="#" alt="Preview" 
-                                 style="max-width: 100%; max-height: 200px;">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Opsi Header OCR</label>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="has_header" 
-                                   id="ocrHasHeaderYes" value="1" checked>
-                            <label class="form-check-label" for="ocrHasHeaderYes">
-                                <i class="fas fa-heading text-success me-1"></i> Baris pertama sebagai NAMA KOLOM
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="has_header" 
-                                   id="ocrHasHeaderNo" value="0">
-                            <label class="form-check-label" for="ocrHasHeaderNo">
-                                <i class="fas fa-list text-warning me-1"></i> Baris pertama sebagai DATA (kolom otomatis)
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Tips:</strong> 
-                        <ul class="mb-0">
-                            <li>Gunakan foto dengan pencahayaan baik</li>
-                            <li>Pastikan tabel lurus dan tidak miring</li>
-                            <li>Hasil OCR mungkin perlu diperiksa ulang</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-cogs me-1"></i> Proses OCR
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 
 <!-- Manage Columns Modal -->
 <div class="modal fade" id="manageColumnsModal" tabindex="-1">
@@ -1007,19 +949,28 @@
                                 </tr>
                             </thead>
                             <tbody id="columnsList">
-                                @foreach($dataset->columns as $index => $column)
-                                <tr data-column="{{ $column }}">
+                                @foreach($dataset->column_definitions as $index => $columnDef)
+                                <tr data-column="{{ $columnDef['name'] }}">
                                     <td>{{ $index + 1 }}</td>
                                     <td>
-                                        <span class="column-name">{{ $column }}</span>
+                                        <div>
+                                            <span class="column-name">{{ $columnDef['name'] }}</span>
+                                            <br>
+                                            <small class="text-muted">{{ ucfirst($columnDef['type']) }}</small>
+                                        </div>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-warning me-1" 
-                                                onclick="showRenameColumn('{{ $column }}')">
+                                        <button class="btn btn-sm btn-info me-1"
+                                                onclick="showChangeTypeModal('{{ $columnDef['name'] }}', '{{ $columnDef['type'] }}')"
+                                                title="Ubah tipe data">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-warning me-1"
+                                                onclick="showRenameColumn('{{ $columnDef['name'] }}')">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-danger" 
-                                                onclick="showDeleteColumn('{{ $column }}')">
+                                        <button class="btn btn-sm btn-danger"
+                                                onclick="showDeleteColumn('{{ $columnDef['name'] }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -1033,11 +984,11 @@
                 <div class="mb-4">
                     <h6>Ubah Urutan Kolom (Drag & Drop)</h6>
                     <div id="sortableColumns" class="list-group">
-                        @foreach($dataset->columns as $column)
-                        <div class="list-group-item draggable-column" data-column="{{ $column }}">
+                        @foreach($dataset->column_definitions as $columnDef)
+                        <div class="list-group-item draggable-column" data-column="{{ $columnDef['name'] }}">
                             <i class="fas fa-grip-vertical me-2"></i>
                             <span class="badge bg-primary me-2">{{ $loop->iteration }}</span>
-                            {{ $column }}
+                            {{ $columnDef['name'] }}
                         </div>
                         @endforeach
                     </div>
@@ -1048,6 +999,52 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Column Type Modal -->
+<div class="modal fade" id="changeTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exchange-alt me-2"></i> Ubah Tipe Kolom
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changeTypeForm">
+                    <div class="mb-3">
+                        <label class="form-label">Nama Kolom</label>
+                        <input type="text" class="form-control" id="changeTypeColumnName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipe Data Baru</label>
+                        <select class="form-select" id="changeTypeNewType" required>
+                            <option value="string">String</option>
+                            <option value="text">Text</option>
+                            <option value="integer">Integer</option>
+                            <option value="float">Float</option>
+                            <option value="date">Date</option>
+                            <option value="boolean">Boolean</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Perhatian:</strong> Mengubah tipe data kolom tidak akan mengubah data yang sudah ada.
+                        Pastikan data yang ada sesuai dengan tipe data baru yang dipilih.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Batal
+                </button>
+                <button type="button" class="btn btn-primary" onclick="changeColumnType()">
+                    <i class="fas fa-save me-1"></i> Ubah Tipe
+                </button>
             </div>
         </div>
     </div>
@@ -1143,40 +1140,7 @@ $(document).ready(function() {
         });
     });
     
-    // Handle OCR form submission
-    $('#ocrForm').submit(function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        
-        Swal.fire({
-            title: 'Memproses OCR...',
-            text: 'Sedang membaca data dari gambar',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        $.ajax({
-            url: $(this).attr('action'),
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                Swal.close();
-                $('#ocrModal').modal('hide');
-                showSuccess('OCR berhasil diproses!');
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            },
-            error: function(xhr) {
-                Swal.close();
-                showError('Gagal memproses OCR: ' + (xhr.responseJSON?.message || 'Unknown error'));
-            }
-        });
-    });
+
     
     // Update selected count
     updateSelectedCount();
@@ -1464,30 +1428,56 @@ function saveAndAddMore() {
 function showAddColumnModal() {
     Swal.fire({
         title: 'Tambah Kolom Baru',
-        input: 'text',
-        inputLabel: 'Nama Kolom',
-        inputPlaceholder: 'Masukkan nama kolom baru',
+        html: `
+            <div class="mb-3">
+                <label for="swal-column-name" class="form-label">Nama Kolom</label>
+                <input type="text" id="swal-column-name" class="form-control" placeholder="Masukkan nama kolom baru" required>
+            </div>
+            <div class="mb-3">
+                <label for="swal-column-type" class="form-label">Tipe Data</label>
+                <select id="swal-column-type" class="form-select" required>
+                    <option value="string" selected>String</option>
+                    <option value="text">Text</option>
+                    <option value="integer">Integer</option>
+                    <option value="float">Float</option>
+                    <option value="date">Date</option>
+                    <option value="boolean">Boolean</option>
+                </select>
+            </div>
+        `,
         showCancelButton: true,
         confirmButtonText: 'Tambah',
         cancelButtonText: 'Batal',
-        inputValidator: (value) => {
-            if (!value) {
-                return 'Nama kolom harus diisi!';
+        preConfirm: () => {
+            const name = document.getElementById('swal-column-name').value;
+            const type = document.getElementById('swal-column-type').value;
+
+            if (!name) {
+                Swal.showValidationMessage('Nama kolom harus diisi!');
+                return false;
             }
-            if (value.length > 100) {
-                return 'Nama kolom maksimal 100 karakter!';
+            if (name.length > 100) {
+                Swal.showValidationMessage('Nama kolom maksimal 100 karakter!');
+                return false;
             }
+            if (!type) {
+                Swal.showValidationMessage('Tipe data harus dipilih!');
+                return false;
+            }
+
+            return { name, type };
         }
     }).then((result) => {
         if (result.isConfirmed && result.value) {
             $('#tableLoading').show();
-            
+
             $.ajax({
                 url: '{{ route("datasets.addColumn", $dataset->id) }}',
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
-                    column_name: result.value
+                    column_name: result.value.name,
+                    column_type: result.value.type
                 },
                 success: function(response) {
                     $('#tableLoading').hide();
@@ -1808,8 +1798,46 @@ function duplicateSelectedRows() {
     });
 }
 
-function exportData() {
-    window.location.href = '{{ route("datasets.export", $dataset->id) }}';
+function showChangeTypeModal(columnName, currentType) {
+    document.getElementById('changeTypeColumnName').value = columnName;
+    document.getElementById('changeTypeNewType').value = currentType;
+    $('#changeTypeModal').modal('show');
+}
+
+function changeColumnType() {
+    const columnName = document.getElementById('changeTypeColumnName').value;
+    const newType = document.getElementById('changeTypeNewType').value;
+
+    if (!newType) {
+        showError('Tipe data harus dipilih!');
+        return;
+    }
+
+    $('#tableLoading').show();
+
+    $.ajax({
+        url: '{{ route("datasets.changeColumnType", $dataset->id) }}',
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            column_name: columnName,
+            new_type: newType
+        },
+        success: function(response) {
+            $('#tableLoading').hide();
+            $('#changeTypeModal').modal('hide');
+            showSuccess('Tipe data kolom berhasil diubah!');
+            setTimeout(() => location.reload(), 1000);
+        },
+        error: function(xhr) {
+            $('#tableLoading').hide();
+            showError('Gagal mengubah tipe data kolom: ' + (xhr.responseJSON?.message || 'Unknown error'));
+        }
+    });
+}
+
+function exportData(format = 'excel') {
+    window.location.href = '{{ route("datasets.export", $dataset->id) }}' + '/' + format;
 }
 
 // Utility functions

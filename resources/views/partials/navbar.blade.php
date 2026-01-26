@@ -35,11 +35,7 @@
                                 <i class="fas fa-file-import text-success"></i> Import Data
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item" href="{{ route('ocr.create') }}">
-                                <i class="fas fa-image text-warning"></i> OCR from Image
-                            </a>
-                        </li>
+
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item" href="{{ route('dashboard.analytics') }}">

@@ -1,16 +1,26 @@
 <form id="editRowForm">
     @csrf
     <div class="row">
-        @foreach($dataset->columns as $column)
+        @foreach($dataset->column_definitions as $columnDef)
         <div class="col-md-4 mb-3">
             <label for="edit_column_{{ $loop->index }}" class="form-label">
-                {{ $column }}
+                {{ $columnDef['name'] }}
+                @if(in_array(strtolower($columnDef['name']), ['email', 'e-mail', 'mail']))
+                    <span class="text-muted small">(email)</span>
+                @elseif(in_array(strtolower($columnDef['name']), ['phone', 'telp', 'telepon', 'hp', 'no hp']))
+                    <span class="text-muted small">(telepon)</span>
+                @elseif(in_array(strtolower($columnDef['name']), ['date', 'tanggal', 'tgl', 'waktu']))
+                    <span class="text-muted small">(tanggal)</span>
+                @endif
+                <small class="text-muted d-block">{{ ucfirst($columnDef['type']) }}</small>
             </label>
-            <input type="text" class="form-control" 
-                   id="edit_column_{{ $loop->index }}" 
-                   name="data[{{ $column }}]" 
-                   value="{{ $row->data[$column] ?? '' }}"
-                   placeholder="Masukkan {{ $column }}">
+            <input type="{{ $columnDef['type'] === 'date' ? 'date' : ($columnDef['type'] === 'boolean' ? 'checkbox' : 'text') }}"
+                   class="form-control"
+                   id="edit_column_{{ $loop->index }}"
+                   name="data[{{ $columnDef['name'] }}]"
+                   value="{{ $columnDef['type'] === 'boolean' ? '1' : ($row->data[$columnDef['name']] ?? '') }}"
+                   placeholder="Masukkan {{ $columnDef['name'] }}"
+                   {{ $columnDef['type'] === 'boolean' && ($row->data[$columnDef['name']] ?? false) ? 'checked' : '' }}>
         </div>
         @endforeach
     </div>
@@ -27,16 +37,26 @@
 
 <script>
 function updateRow(rowId) {
-    const formData = new FormData(document.getElementById('editRowForm'));
+    const form = document.getElementById('editRowForm');
     const data = {};
-    
-    for (let [key, value] of formData.entries()) {
-        const match = key.match(/data\[(.+)\]/);
+
+    // Get all form inputs
+    const inputs = form.querySelectorAll('input[name^="data["]');
+
+    inputs.forEach(input => {
+        const match = input.name.match(/data\[(.+)\]/);
         if (match) {
-            data[match[1]] = value;
+            const columnName = match[1];
+
+            // Handle checkboxes (boolean fields)
+            if (input.type === 'checkbox') {
+                data[columnName] = input.checked ? '1' : '0';
+            } else {
+                data[columnName] = input.value;
+            }
         }
-    }
-    
+    });
+
     $.ajax({
         url: '/datasets/{{ $dataset->id }}/rows/' + rowId,
         type: 'PUT',

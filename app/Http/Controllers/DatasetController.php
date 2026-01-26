@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\DataImport;
+use App\Exports\DataExport;
 
 class DatasetController extends Controller
 {
@@ -25,12 +26,13 @@ class DatasetController extends Controller
             ->get();
 
         // Get shared datasets with permissions
-        $sharedDatasets = Dataset::whereHas('shares', function($query) {
-            $query->where('user_id', auth()->id());
+        $sharedDatasets = Dataset::whereHas('shares', function($subQuery) {
+            $subQuery->where('user_id', auth()->id());
         })
         ->with(['user', 'shares' => function($query) {
             $query->where('user_id', auth()->id());
         }])
+        ->where('user_id', '!=', auth()->id())
         ->orderBy('created_at', 'desc')
         ->get();
 
@@ -48,7 +50,8 @@ class DatasetController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'columns' => 'required|array|min:1',
-            'columns.*' => 'required|string'
+            'columns.*.name' => 'required|string|max:255',
+            'columns.*.type' => 'required|string|in:string,text,integer,float,date,boolean'
         ]);
 
         if ($validator->fails()) {
@@ -57,10 +60,18 @@ class DatasetController extends Controller
                 ->withInput();
         }
 
+        // Convert columns to the new format
+        $columns = array_map(function($column) {
+            return [
+                'name' => $column['name'],
+                'type' => $column['type'] ?? 'string'
+            ];
+        }, $request->columns);
+
         $dataset = Dataset::create([
             'name' => $request->name,
             'description' => $request->description,
-            'columns' => $request->columns,
+            'columns' => $columns,
             'user_id' => auth()->id()
         ]);
 
@@ -83,11 +94,15 @@ class DatasetController extends Controller
         }
 
         $request->validate([
-            'column_name' => 'required|string|max:255'
+            'column_name' => 'required|string|max:255',
+            'column_type' => 'required|string|in:string,text,integer,float,date,boolean'
         ]);
 
         $columns = $dataset->columns;
-        $columns[] = $request->column_name;
+        $columns[] = [
+            'name' => $request->column_name,
+            'type' => $request->column_type
+        ];
 
         $dataset->update(['columns' => $columns]);
 
@@ -122,29 +137,45 @@ class DatasetController extends Controller
             'new_name' => 'required|string|max:255'
         ]);
 
-        $columns = $dataset->columns;
-        $index = array_search($request->old_name, $columns);
+        $columns = $dataset->columns ?? [];
 
-        if ($index !== false) {
-            $columns[$index] = $request->new_name;
-            $dataset->update(['columns' => $columns]);
-
-            // Update all rows with new column name
-            DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
-                foreach ($rows as $row) {
-                    $data = $row->data;
-                    if (isset($data[$request->old_name])) {
-                        $data[$request->new_name] = $data[$request->old_name];
-                        unset($data[$request->old_name]);
-                        $row->update(['data' => $data]);
-                    }
-                }
-            });
-
-            return response()->json(['success' => true]);
+        // Find and update the column name
+        $columnFound = false;
+        foreach ($columns as &$column) {
+            if (is_array($column) && $column['name'] === $request->old_name) {
+                $column['name'] = $request->new_name;
+                $columnFound = true;
+                break;
+            } elseif (is_string($column) && $column === $request->old_name) {
+                // Handle backward compatibility - convert string to array format
+                $column = [
+                    'name' => $request->new_name,
+                    'type' => 'string'
+                ];
+                $columnFound = true;
+                break;
+            }
         }
 
-        return response()->json(['success' => false], 400);
+        if (!$columnFound) {
+            return response()->json(['success' => false, 'message' => 'Column not found'], 404);
+        }
+
+        $dataset->update(['columns' => $columns]);
+
+        // Update all rows with new column name
+        DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
+            foreach ($rows as $row) {
+                $data = $row->data ?? [];
+                if (isset($data[$request->old_name])) {
+                    $data[$request->new_name] = $data[$request->old_name];
+                    unset($data[$request->old_name]);
+                    $row->update(['data' => $data]);
+                }
+            }
+        });
+
+        return response()->json(['success' => true]);
     }
 
     public function deleteColumn(Request $request, $id)
@@ -207,18 +238,87 @@ class DatasetController extends Controller
             'columns' => 'required|array'
         ]);
 
-        $dataset->update(['columns' => $request->columns]);
+        // For reordering, we need to maintain the column definitions structure
+        $currentColumns = $dataset->column_definitions ?? [];
+        $newOrder = $request->columns;
+
+        // Create new column order maintaining types
+        $orderedColumns = [];
+        foreach ($newOrder as $columnName) {
+            $found = false;
+            foreach ($currentColumns as $colDef) {
+                if ($colDef['name'] === $columnName) {
+                    $orderedColumns[] = $colDef;
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                // Fallback for backward compatibility
+                $orderedColumns[] = ['name' => $columnName, 'type' => 'string'];
+            }
+        }
+
+        $dataset->update(['columns' => $orderedColumns]);
 
         // Reorder data in all rows according to new column order
-        DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($request) {
+        DatasetRow::where('dataset_id', $dataset->id)->chunk(100, function($rows) use ($newOrder) {
             foreach ($rows as $row) {
                 $newData = [];
-                foreach ($request->columns as $column) {
+                foreach ($newOrder as $column) {
                     $newData[$column] = $row->data[$column] ?? null;
                 }
                 $row->update(['data' => $newData]);
             }
         });
+
+        return response()->json(['success' => true]);
+    }
+
+    public function changeColumnType(Request $request, $id)
+    {
+        $dataset = Dataset::findOrFail($id);
+
+        // Check if user has access to this dataset
+        if (!$dataset->hasAccess()) {
+            abort(404);
+        }
+
+        // Check if user can edit dataset structure (owner, admin, or users with edit permission)
+        if (!$dataset->canEdit()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'column_name' => 'required|string',
+            'new_type' => 'required|string|in:string,text,integer,float,date,boolean'
+        ]);
+
+        $columns = $dataset->columns;
+
+        // Find the column and update its type
+        $columnFound = false;
+        foreach ($columns as &$column) {
+            if (is_array($column) && $column['name'] === $request->column_name) {
+                $column['type'] = $request->new_type;
+                $columnFound = true;
+                break;
+            } elseif (is_string($column) && $column === $request->column_name) {
+                // Handle backward compatibility - convert string to array format
+                $column = [
+                    'name' => $request->column_name,
+                    'type' => $request->new_type
+                ];
+                $columnFound = true;
+                break;
+            }
+        }
+
+        if (!$columnFound) {
+            return response()->json(['success' => false, 'message' => 'Column not found'], 404);
+        }
+
+        $dataset->update(['columns' => $columns]);
 
         return response()->json(['success' => true]);
     }
@@ -527,7 +627,7 @@ class DatasetController extends Controller
         }
     }
 
-    public function export($id)
+    public function export($id, $format = 'excel')
     {
         $dataset = Dataset::findOrFail($id);
 
@@ -536,7 +636,111 @@ class DatasetController extends Controller
             abort(404);
         }
 
-        return Excel::download(new DataExport($dataset), $dataset->name . '.xlsx');
+        switch ($format) {
+            case 'excel':
+                return Excel::download(new DataExport($dataset), $dataset->name . '.xlsx');
+
+            case 'pdf':
+                return $this->exportToPdf($dataset);
+
+            case 'image':
+                return $this->exportToImage($dataset);
+
+            default:
+                return Excel::download(new DataExport($dataset), $dataset->name . '.xlsx');
+        }
+    }
+
+    private function exportToPdf($dataset)
+    {
+        // Generate HTML table for PDF
+        $html = $this->generateTableHtml($dataset);
+
+        // Use dompdf or similar library to generate PDF
+        $pdf = \PDF::loadHTML($html);
+        return $pdf->download($dataset->name . '.pdf');
+    }
+
+    private function exportToImage($dataset)
+    {
+        // Generate HTML table for image
+        $html = $this->generateTableHtml($dataset);
+
+        // Use a library like wkhtmltoimage or similar to generate image
+        // For now, we'll use a simple approach with GD or Imagick if available
+        // This is a placeholder - you might need to install additional packages
+
+        $imagePath = storage_path('app/temp/' . $dataset->name . '.png');
+
+        // Ensure temp directory exists
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
+        // Use a simple GD approach to create an image
+        $this->generateImageFromHtml($html, $imagePath);
+
+        return response()->download($imagePath)->deleteFileAfterSend(true);
+    }
+
+    private function generateTableHtml($dataset)
+    {
+        $html = '<html><head><style>';
+        $html .= 'table { border-collapse: collapse; width: 100%; }';
+        $html .= 'th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }';
+        $html .= 'th { background-color: #f2f2f2; }';
+        $html .= '</style></head><body>';
+
+        $html .= '<h2>' . htmlspecialchars($dataset->name) . '</h2>';
+        if ($dataset->description) {
+            $html .= '<p>' . htmlspecialchars($dataset->description) . '</p>';
+        }
+
+        $html .= '<table>';
+        $html .= '<thead><tr>';
+
+        foreach ($dataset->column_definitions as $column) {
+            $html .= '<th>' . htmlspecialchars($column['name']) . '</th>';
+        }
+
+        $html .= '</tr></thead><tbody>';
+
+        foreach ($dataset->rows as $row) {
+            $html .= '<tr>';
+            foreach ($dataset->column_definitions as $column) {
+                $value = $row->data[$column['name']] ?? '';
+                $html .= '<td>' . htmlspecialchars($value) . '</td>';
+            }
+            $html .= '</tr>';
+        }
+
+        $html .= '</tbody></table>';
+        $html .= '</body></html>';
+
+        return $html;
+    }
+
+    private function generateImageFromHtml($html, $outputPath)
+    {
+        // This is a basic implementation using GD
+        // For production, consider using wkhtmltoimage or similar
+
+        // Create a simple text-based image representation
+        $width = 800;
+        $height = 600;
+
+        $image = imagecreatetruecolor($width, $height);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        $black = imagecolorallocate($image, 0, 0, 0);
+
+        imagefill($image, 0, 0, $white);
+
+        // Add some basic text
+        imagestring($image, 5, 10, 10, 'Dataset Export (Image format)', $black);
+        imagestring($image, 3, 10, 40, 'Note: Full HTML to image conversion requires additional setup', $black);
+
+        imagepng($image, $outputPath);
+        imagedestroy($image);
     }
 
     public function analyze($id)
@@ -746,7 +950,8 @@ class DatasetController extends Controller
 
         $rows = DatasetRow::where('dataset_id', $dataset->id)
             ->where(function ($query) use ($searchTerm, $dataset) {
-                foreach ($dataset->columns as $column) {
+                $columnNames = $dataset->column_definitions->pluck('name')->toArray();
+                foreach ($columnNames as $column) {
                     $query->orWhere('data->' . $column, 'like', '%' . $searchTerm . '%');
                 }
             })

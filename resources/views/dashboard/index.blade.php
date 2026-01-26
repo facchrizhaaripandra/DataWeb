@@ -42,22 +42,7 @@
         </div>
     </div>
     
-    <div class="col-md-3">
-        <div class="card stat-card bg-warning text-dark">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="card-title">OCR Processing</h5>
-                        <h2 class="mb-0">{{ $stats['total_ocr'] }}</h2>
-                    </div>
-                    <div>
-                        <i class="fas fa-image fa-3x"></i>
-                    </div>
-                </div>
-                <a href="{{ route('ocr.index') }}" class="text-dark stretched-link"></a>
-            </div>
-        </div>
-    </div>
+
     
     <div class="col-md-3">
         <div class="card stat-card bg-info text-white">
@@ -145,9 +130,6 @@
                     </a>
                     <a href="{{ route('imports.create') }}" class="btn btn-success">
                         <i class="fas fa-file-import"></i> Import from Excel
-                    </a>
-                    <a href="{{ route('ocr.create') }}" class="btn btn-warning">
-                        <i class="fas fa-camera"></i> OCR from Image
                     </a>
                     <a href="{{ route('dashboard.analytics') }}" class="btn btn-info">
                         <i class="fas fa-chart-bar"></i> View Analytics

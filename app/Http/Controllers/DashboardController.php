@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Dataset;
 use App\Models\Import;
-use App\Models\OcrResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +36,6 @@ class DashboardController extends Controller
         $stats = [
             'total_datasets' => Dataset::where('user_id', $user->id)->count(),
             'total_imports' => Import::where('user_id', $user->id)->count(),
-            'total_ocr' => OcrResult::where('user_id', $user->id)->count(),
             'recent_datasets' => $recentDatasets
         ];
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Dataset;
 use App\Models\Import;
-use App\Models\OcrResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +19,6 @@ class AdminController extends Controller
             'total_users' => User::count(),
             'total_datasets' => Dataset::count(),
             'total_imports' => Import::count(),
-            'total_ocr' => OcrResult::count(),
             'recent_users' => User::orderBy('created_at', 'desc')->limit(5)->get()
         ];
 
@@ -29,7 +27,7 @@ class AdminController extends Controller
 
     public function users()
     {
-        $users = User::withCount(['datasets', 'imports', 'ocrResults'])
+        $users = User::withCount(['datasets', 'imports'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
         
@@ -65,7 +63,6 @@ class AdminController extends Controller
         // Delete user's data first
         $user->datasets()->delete();
         $user->imports()->delete();
-        $user->ocrResults()->delete();
         
         $user->delete();
 
@@ -151,7 +148,6 @@ class AdminController extends Controller
             'total_datasets' => Dataset::count(),
             'total_users' => User::count(),
             'total_imports' => Import::count(),
-            'total_ocr' => OcrResult::count(),
             'database_size' => $this->getDatabaseSize(),
         ];
 

@@ -144,9 +144,22 @@
                     <div class="col-md-6">
                         <h5>Export Options</h5>
                         <div class="d-grid gap-2">
-                            <a href="{{ route('datasets.export', $dataset->id) }}" class="btn btn-outline-primary">
-                                <i class="fas fa-file-excel"></i> Export to Excel
-                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdownAnalysis" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-file-export"></i> Export Data
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="exportDropdownAnalysis">
+                                    <li><a class="dropdown-item" href="#" onclick="exportData('excel')">
+                                        <i class="fas fa-file-excel text-success"></i> Export to Excel
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportData('pdf')">
+                                        <i class="fas fa-file-pdf text-danger"></i> Export to PDF
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportData('image')">
+                                        <i class="fas fa-image text-info"></i> Export to Image
+                                    </a></li>
+                                </ul>
+                            </div>
                             <button class="btn btn-outline-success">
                                 <i class="fas fa-chart-bar"></i> Generate Report
                             </button>

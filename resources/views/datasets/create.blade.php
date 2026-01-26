@@ -80,27 +80,69 @@
                         <div id="columns-container">
                             @if(old('columns'))
                                 @foreach(old('columns') as $index => $column)
-                                    <div class="input-group mb-2 column-row">
-                                        <input type="text" class="form-control" name="columns[]"
-                                               value="{{ $column }}" required>
-                                        @if($index > 0)
-                                            <button type="button" class="btn btn-outline-danger remove-column">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        @endif
+                                    <div class="row mb-2 column-row">
+                                        <div class="col-md-6">
+                                            <input type="text" class="form-control" name="columns[{{ $index }}][name]"
+                                                   value="{{ $column['name'] ?? $column }}" placeholder="Column name" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <select class="form-select" name="columns[{{ $index }}][type]" required>
+                                                <option value="string" {{ ($column['type'] ?? 'string') == 'string' ? 'selected' : '' }}>String</option>
+                                                <option value="text" {{ ($column['type'] ?? 'string') == 'text' ? 'selected' : '' }}>Text</option>
+                                                <option value="integer" {{ ($column['type'] ?? 'string') == 'integer' ? 'selected' : '' }}>Integer</option>
+                                                <option value="float" {{ ($column['type'] ?? 'string') == 'float' ? 'selected' : '' }}>Float</option>
+                                                <option value="date" {{ ($column['type'] ?? 'string') == 'date' ? 'selected' : '' }}>Date</option>
+                                                <option value="boolean" {{ ($column['type'] ?? 'string') == 'boolean' ? 'selected' : '' }}>Boolean</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            @if($index > 0)
+                                                <button type="button" class="btn btn-outline-danger remove-column w-100">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            @endif
+                                        </div>
                                     </div>
                                 @endforeach
                             @else
-                                <div class="input-group mb-2 column-row">
-                                    <input type="text" class="form-control" name="columns[]"
-                                           placeholder="Column name" required>
+                                <div class="row mb-2 column-row">
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control" name="columns[0][name]"
+                                               placeholder="Column name" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select class="form-select" name="columns[0][type]" required>
+                                            <option value="string" selected>String</option>
+                                            <option value="text">Text</option>
+                                            <option value="integer">Integer</option>
+                                            <option value="float">Float</option>
+                                            <option value="date">Date</option>
+                                            <option value="boolean">Boolean</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                    </div>
                                 </div>
-                                <div class="input-group mb-2 column-row">
-                                    <input type="text" class="form-control" name="columns[]"
-                                           placeholder="Column name" required>
-                                    <button type="button" class="btn btn-outline-danger remove-column">
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                                <div class="row mb-2 column-row">
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control" name="columns[1][name]"
+                                               placeholder="Column name" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select class="form-select" name="columns[1][type]" required>
+                                            <option value="string" selected>String</option>
+                                            <option value="text">Text</option>
+                                            <option value="integer">Integer</option>
+                                            <option value="float">Float</option>
+                                            <option value="date">Date</option>
+                                            <option value="boolean">Boolean</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger remove-column w-100">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             @endif
                         </div>
@@ -282,13 +324,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add column
     document.getElementById('add-column').addEventListener('click', function() {
         const container = document.getElementById('columns-container');
+        const columnIndex = container.children.length;
         const div = document.createElement('div');
-        div.className = 'input-group mb-2 column-row';
+        div.className = 'row mb-2 column-row';
         div.innerHTML = `
-            <input type="text" class="form-control" name="columns[]" placeholder="Column name" required>
-            <button type="button" class="btn btn-outline-danger remove-column">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="col-md-6">
+                <input type="text" class="form-control" name="columns[${columnIndex}][name]" placeholder="Column name" required>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" name="columns[${columnIndex}][type]" required>
+                    <option value="string" selected>String</option>
+                    <option value="text">Text</option>
+                    <option value="integer">Integer</option>
+                    <option value="float">Float</option>
+                    <option value="date">Date</option>
+                    <option value="boolean">Boolean</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger remove-column w-100">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         `;
         container.appendChild(div);
     });

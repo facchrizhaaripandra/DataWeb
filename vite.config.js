@@ -15,8 +15,6 @@ export default defineConfig({
                 "resources/js/dataset.js",
                 "resources/css/import.css",
                 "resources/js/import.js",
-                "resources/css/ocr.css",
-                "resources/js/ocr.js",
                 "resources/css/admin.css",
                 "resources/js/admin.js",
                 "resources/css/components.css",

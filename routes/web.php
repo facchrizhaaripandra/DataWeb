@@ -6,7 +6,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatasetController;
 use App\Http\Controllers\DatasetShareController;
 use App\Http\Controllers\ImportController;
-use App\Http\Controllers\OcrController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 
@@ -54,6 +53,7 @@ Route::middleware(['auth'])->group(function () {
     // Dataset Column Operations
     Route::post('/datasets/{id}/add-column', [DatasetController::class, 'addColumn'])->name('datasets.addColumn');
     Route::post('/datasets/{id}/rename-column', [DatasetController::class, 'renameColumn'])->name('datasets.renameColumn');
+    Route::post('/datasets/{id}/change-column-type', [DatasetController::class, 'changeColumnType'])->name('datasets.changeColumnType');
     Route::delete('/datasets/{id}/delete-column', [DatasetController::class, 'deleteColumn'])->name('datasets.deleteColumn');
     Route::post('/datasets/{id}/reorder-columns', [DatasetController::class, 'reorderColumns'])->name('datasets.reorderColumns');
     
@@ -64,7 +64,6 @@ Route::middleware(['auth'])->group(function () {
     
     // Dataset Preview Operations
     Route::post('/datasets/preview-import', [DatasetController::class, 'previewImport'])->name('datasets.preview.import');
-    Route::post('/datasets/preview-ocr', [DatasetController::class, 'previewOcr'])->name('datasets.preview.ocr');
     
     // Import Routes
     Route::prefix('imports')->name('imports.')->group(function () {
@@ -77,17 +76,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [ImportController::class, 'destroy'])->name('destroy');
     });
     
-    // OCR Routes
-    Route::prefix('ocr')->name('ocr.')->group(function () {
-        Route::get('/', [OcrController::class, 'index'])->name('index');
-        Route::get('/create', [OcrController::class, 'create'])->name('create');
-        Route::post('/preview', [OcrController::class, 'preview'])->name('preview');
-        Route::post('/', [OcrController::class, 'store'])->name('store');
-        Route::get('/{id}', [OcrController::class, 'show'])->name('show');
-        Route::post('/{id}/retry', [OcrController::class, 'retry'])->name('retry');
-        Route::post('/{id}/save', [OcrController::class, 'saveToDataset'])->name('save');
-        Route::delete('/{id}', [OcrController::class, 'destroy'])->name('destroy');
-    });
+
     
     // Admin Routes - Require Admin Role
     Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -137,13 +126,10 @@ Route::middleware(['auth'])->group(function () {
         // Import API
         Route::get('/imports/status/{id}', [ImportController::class, 'checkStatus'])->name('imports.status');
         
-        // OCR API
-        Route::get('/ocr/status/{id}', [OcrController::class, 'checkStatus'])->name('ocr.status');
-        
         // Analytics API
         Route::get('/analytics/datasets', [DashboardController::class, 'datasetAnalytics'])->name('analytics.datasets');
         Route::get('/analytics/imports', [DashboardController::class, 'importAnalytics'])->name('analytics.imports');
-        Route::get('/analytics/ocr', [DashboardController::class, 'ocrAnalytics'])->name('analytics.ocr');
+
         
         // Admin API
         Route::get('/admin/backups', [AdminController::class, 'getBackups'])->name('admin.backups');
