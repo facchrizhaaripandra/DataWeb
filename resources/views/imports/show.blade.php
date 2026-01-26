@@ -1,4 +1,3 @@
-<!-- resources/views/imports/show.blade.php -->
 @extends('layouts.app')
 
 @section('title', 'Detail Import')

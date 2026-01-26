@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- resources/views/layouts/app.blade.php -->
 <html lang="id">
 <head>
     <meta charset="UTF-8">

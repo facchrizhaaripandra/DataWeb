@@ -1,4 +1,3 @@
-<!-- resources/views/imports/index.blade.php -->
 @extends('layouts.app')
 
 @section('title', 'Import History')
