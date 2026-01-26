@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['php82', 'php82Packages.composer', 'postgresql', 'nodejs', 'npm']
+nixPkgs = ['php83', 'php83Packages.composer', 'postgresql', 'nodejs', 'npm']
 nixLibs = ['zlib', 'libzip', 'libjpeg', 'libpng', 'freetype', 'libpqxx']
 
 [phases.install]
@@ -9,9 +9,8 @@ cmds = [
     'npm run build',
     'php artisan key:generate --force',
     'php artisan config:cache',
-    'php artisan route:cache',
-    'php artisan migrate --force'
+    'php artisan route:cache'
 ]
 
 [start]
-cmd = 'php -r "echo \"php artisan serve --host=0.0.0.0 --port=\" . (int)$_ENV[\"PORT\"];" | bash'
+cmd = 'php artisan migrate --force || true && php artisan serve --host=0.0.0.0 --port=$PORT'
