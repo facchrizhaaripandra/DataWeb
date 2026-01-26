@@ -11,6 +11,7 @@ RUN apt-get update \
     libxml2-dev \
     libzip-dev \
     libonig-dev \
+    libpq-dev \
     pkg-config \
     zip \
     unzip \
@@ -18,7 +19,7 @@ RUN apt-get update \
     build-essential \
     autoconf \
   && docker-php-ext-configure gd --with-freetype --with-jpeg \
-  && docker-php-ext-install -j"$(nproc)" gd pdo pdo_mysql mbstring xml zip opcache \
+  && docker-php-ext-install -j"$(nproc)" gd pdo pdo_pgsql pdo_mysql mbstring xml zip opcache \
   && apt-get purge -y --auto-remove build-essential autoconf pkg-config \
   && rm -rf /var/lib/apt/lists/*
 

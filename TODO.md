@@ -1,47 +1,53 @@
-# Remove OCR Features and Fix Display
+# Setup PostgreSQL for Railway Deployment
 
-## Files to Delete
+## Steps to Complete:
 
-- [ ] app/Models/OcrResult.php
-- [ ] app/Http/Controllers/OcrController.php
-- [ ] app/Jobs/ProcessOcr.php
-- [ ] resources/views/ocr/index.blade.php
-- [ ] resources/views/ocr/create.blade.php
-- [ ] resources/views/ocr/show.blade.php
-- [ ] resources/css/ocr.css
-- [ ] resources/js/ocr.js
-- [ ] storage/app/tesseract/patterns.txt
-- [ ] database/migrations/2026_01_21_155618_create_ocr_results_table.php
+1. **Create PostgreSQL Database on Railway**
+    - Go to your Railway project dashboard
+    - Add a new PostgreSQL database service
+    - Get the EXTERNAL connection details (not internal) from the database service
 
-## Models to Update
+2. **Set Environment Variables in Railway**
+    - In your Railway service settings, add these environment variables:
+        - `DB_CONNECTION=pgsql`
+        - `DB_HOST=<external_postgres_host>` (use the public/external host, not postgres.railway.internal)
+        - `DB_PORT=<your_postgres_port>`
+        - `DB_DATABASE=<your_postgres_database>`
+        - `DB_USERNAME=<your_postgres_username>`
+        - `DB_PASSWORD=<your_postgres_password>`
+    - Also ensure `APP_KEY` is set (generate with `php artisan key:generate`)
 
-- [ ] app/Models/User.php - Remove ocrResults relationship
-- [ ] app/Models/Dataset.php - Remove ocrResults relationship
+3. **Update Application Configuration**
+    - [x] Updated Dockerfile to include pdo_pgsql extension
+    - [x] Updated nixpacks.toml to include PostgreSQL support
 
-## Controllers to Update
+4. **Deploy and Test**
+    - Redeploy your application on Railway
+    - Check the deploy logs for any database connection errors
+    - Test that the application can connect to the database and run migrations
 
-- [ ] app/Http/Controllers/DashboardController.php - Remove OCR stats and analytics
-- [ ] app/Http/Controllers/AdminController.php - Remove OCR stats and user deletion
-- [ ] app/Http/Controllers/DatasetController.php - Remove previewOcr method
+## Current Issue:
 
-## Routes to Update
+- Error: "could not translate host name 'postgres.railway.internal' to address: Unknown host"
+- **Solution**: Use the EXTERNAL PostgreSQL connection details instead of the internal hostname
+- From your Railway variables, use DATABASE_PUBLIC_URL for the connection
 
-- [ ] routes/web.php - Remove OCR routes
+## Environment Variables to Set:
 
-## Views to Update
+Based on your Railway PostgreSQL variables, set these in your app service (use individual variables, NOT DATABASE_URL):
 
-- [ ] resources/views/partials/sidebar.blade.php - Remove OCR menu item
-- [ ] resources/views/dashboard/index.blade.php - Remove OCR stat card and quick action
-- [ ] resources/views/admin/dashboard.blade.php - Remove OCR stats
+- `DB_CONNECTION=pgsql`
+- `DB_HOST=metro.proxy.rlwy.net` (extracted from DATABASE_PUBLIC_URL)
+- `DB_PORT=36087` (extracted from DATABASE_PUBLIC_URL)
+- `DB_DATABASE=railway`
+- `DB_USERNAME=postgres`
+- `DB_PASSWORD=evZkbTYWPEKspaUhrfAOpTgQAXAYZxvG`
+- Also ensure `APP_KEY` is set (generate with `php artisan key:generate`)
 
-## Config/Dependencies to Update
+**Important**: Do NOT set `DB_HOST` to the full `DATABASE_PUBLIC_URL` - it should be just the domain part.
 
-- [ ] composer.json - Remove thiagoalessio/tesseract_ocr dependency
-- [ ] vite.config.js - Remove OCR CSS and JS files
+## Notes:
 
-## Testing
-
-- [ ] Test dashboard loads without errors
-- [ ] Test sidebar displays correctly
-- [ ] Test admin dashboard works
-- [ ] Run composer install to remove OCR dependency
+- The application defaults to SQLite locally, but will use PostgreSQL on Railway via environment variables
+- Make sure to run `php artisan migrate` after deployment to create the database tables
+- If you encounter issues, check Railway's deploy logs for specific error messages

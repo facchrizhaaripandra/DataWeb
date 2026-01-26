@@ -1,6 +1,6 @@
 [phases.setup]
-nixPkgs = ['php82', 'php82Packages.composer']
-nixLibs = ['zlib', 'libzip', 'libjpeg', 'libpng', 'freetype']
+nixPkgs = ['php82', 'php82Packages.composer', 'postgresql']
+nixLibs = ['zlib', 'libzip', 'libjpeg', 'libpng', 'freetype', 'libpqxx']
 
 [phases.install]
 cmds = [
