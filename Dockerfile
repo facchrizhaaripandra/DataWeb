@@ -35,4 +35,4 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-ansi --no-scri
 # Copy sisa source
 COPY . .
 
-CMD ["php-fpm"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=${PORT:-8000}"]
