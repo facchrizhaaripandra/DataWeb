@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['php82', 'php82Packages.composer', 'php82Extensions.pdo', 'php82Extensions.pdo_mysql', 'php82Extensions.mbstring', 'php82Extensions.xml', 'php82Extensions.zip', 'php82Extensions.gd', 'php82Extensions.imagick', 'libpng', 'libjpeg', 'freetype', 'tesseract']
+nixPkgs = ['php83', 'php83Packages.composer', 'php83Extensions.pdo', 'php83Extensions.pdo_mysql', 'php83Extensions.mbstring', 'php83Extensions.xml', 'php83Extensions.zip', 'php83Extensions.gd', 'php83Extensions.imagick', 'libpng', 'libjpeg', 'freetype', 'tesseract']
 
 [phases.install]
 cmds = [
