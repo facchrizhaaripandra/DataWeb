@@ -1,10 +1,10 @@
 [phases.setup]
 nixPkgs = ['php82', 'php82Packages.composer']
-nixLibs = ['libjpeg', 'libpng', 'freetype']
+nixLibs = ['zlib', 'libzip', 'libjpeg', 'libpng', 'freetype']
 
 [phases.install]
 cmds = [
-    'composer install --optimize-autoloader --no-dev --no-interaction'
+    'composer install --optimize-autoloader --no-dev --no-interaction --ignore-platform-req=ext-zip --ignore-platform-req=ext-gd'
 ]
 
 [start]
