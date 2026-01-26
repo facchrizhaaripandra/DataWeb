@@ -19,7 +19,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY . .
 
 # Install dependencies
-RUN composer install --optimize-autoloader --no-dev --no-interaction
+RUN composer install --optimize-autoloader --no-scripts --no-interaction --ignore-platform-req=php-64bit --ignore-platform-req=ext-gd
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www \
