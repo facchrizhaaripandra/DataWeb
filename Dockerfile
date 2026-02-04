@@ -13,20 +13,18 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     tesseract-ocr \
-    nginx \
-    libpq-dev
+    libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions including GD and PostgreSQL
 RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
-
-# Configure PHP-FPM to listen on TCP
-RUN sed -i 's/listen = \/run\/php\/php8.3-fpm.sock/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
-WORKDIR /var/www
+WORKDIR /app
 
 # Copy composer files
 COPY composer.json composer.lock ./
@@ -42,19 +40,11 @@ RUN npm install
 RUN npm run build
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage \
-    && chmod -R 755 /var/www/bootstrap/cache
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Configure Nginx
-COPY nginx.conf /etc/nginx/nginx.conf
+# Run post-install scripts
+RUN composer dump-autoload --optimize
 
-# Copy and make start script executable
-COPY start.sh /var/www/start.sh
-RUN chmod +x /var/www/start.sh
-
-# Expose port
-EXPOSE 80
-
-# Start services
-CMD ./start.sh
+# Expose port (Railway will override this with $PORT)
+EXPOSE 8080

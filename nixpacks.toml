@@ -1,19 +1,20 @@
 [phases.setup]
-nixPkgs = ['...', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium']
-aptPkgs = ['tesseract-ocr', 'php8.3-gd', 'nginx']
+nixPkgs = ['php83', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd', 'php83Extensions.zip', 'nodejs', 'npm']
+aptPkgs = ['tesseract-ocr']
 
 [phases.install]
 cmds = [
-  'composer install --optimize-autoloader --no-scripts --no-interaction'
+    'composer install --optimize-autoloader --no-dev --no-scripts --no-interaction'
 ]
 
 [phases.build]
 cmds = [
-  'npm ci',
-  'npm run build',
-  'chmod +x start.sh',
-  'sed -i "s/listen = \/run\/php\/php8.3-fpm.sock/listen = 127.0.0.1:9000/" /etc/php/8.3/fpm/pool.d/www.conf'
+    'npm ci',
+    'npm run build',
+    'php artisan config:cache',
+    'php artisan route:cache',
+    'php artisan view:cache'
 ]
 
 [start]
-cmd = './start.sh'
+cmd = 'php artisan serve --host=0.0.0.0 --port=$PORT'
