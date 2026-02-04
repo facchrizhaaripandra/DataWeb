@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     nginx
 
-# Install PHP extensions including GD
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+# Install PHP extensions including GD and PostgreSQL
+RUN docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
 # Configure PHP-FPM to listen on TCP
 RUN sed -i 's/listen = \/run\/php\/php8.3-fpm.sock/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf
