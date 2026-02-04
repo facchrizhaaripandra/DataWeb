@@ -12,7 +12,6 @@ export default defineConfig({
                 "resources/css/dataset.css",
                 "resources/js/dataset.js",
                 "resources/css/import.css",
-                "resources/css/admin.css",
                 "resources/css/components.css",
             ],
             refresh: true,
