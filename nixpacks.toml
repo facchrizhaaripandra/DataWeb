@@ -1,6 +1,6 @@
 [phases.setup]
-nixPkgs = ['...', 'php83Extensions.gd', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium']
-aptPkgs = ['tesseract-ocr']
+nixPkgs = ['...', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium']
+aptPkgs = ['tesseract-ocr', 'php8.3-gd']
 
 [phases.install]
 cmds = [
