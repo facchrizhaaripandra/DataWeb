@@ -16,6 +16,3 @@ cmds = [
     'chmod -R 775 storage bootstrap/cache',
     'chmod +x start.sh'
 ]
-
-[start]
-cmd = './start.sh'
