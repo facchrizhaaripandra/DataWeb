@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure GD with proper flags
+# Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip
 
@@ -56,17 +56,8 @@ RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cac
 # Make start script executable
 RUN chmod +x start.sh
 
-# Expose port
+# Expose port (Railway will use $PORT)
 EXPOSE 8080
-```
 
-**Dan buat `.dockerignore`:**
-```
-node_modules
-vendor
-.git
-.env
-storage/logs/*
-storage/framework/cache/*
-storage/framework/sessions/*
-storage/framework/views/*
+# Start command
+CMD ["./start.sh"]
