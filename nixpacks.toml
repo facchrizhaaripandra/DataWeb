@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['php83', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd', 'php83Extensions.zip', 'php83Extensions.mbstring', 'nodejs', 'npm']
+nixPkgs = ['php83', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd', 'php83Extensions.zip', 'php83Extensions.mbstring', 'nodejs', 'npm', 'nginx']
 aptPkgs = ['tesseract-ocr']
 
 [phases.install]
@@ -16,3 +16,6 @@ cmds = [
     'chmod -R 775 storage bootstrap/cache',
     'chmod +x start.sh'
 ]
+
+[start]
+cmd = './start.sh'
