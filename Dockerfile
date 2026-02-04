@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
-    tesseract-ocr
+    tesseract-ocr \
+    nginx
 
 # Install PHP extensions including GD
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
@@ -33,7 +34,7 @@ RUN composer install --optimize-autoloader --no-dev --no-scripts
 COPY . .
 
 # Install Node dependencies and build assets
-RUN npm install 
+RUN npm install
 RUN npm run build
 
 # Set permissions
@@ -41,8 +42,11 @@ RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
-# Expose port
-EXPOSE 8000
+# Configure Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Start Laravel
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Expose port
+EXPOSE 80
+
+# Start services
+CMD service nginx start && php-fpm
