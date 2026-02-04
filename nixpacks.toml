@@ -4,7 +4,7 @@ aptPkgs = ['tesseract-ocr']
 
 [phases.install]
 cmds = [
-    'composer install --optimize-autoloader --no-dev --ignore-platform-reqs'
+    'COMPOSER_ALLOW_SUPERUSER=1 composer install --optimize-autoloader --no-dev --ignore-platform-reqs --no-interaction'
 ]
 
 [phases.build]
