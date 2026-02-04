@@ -21,6 +21,11 @@ fi
 
 echo "Starting PHP server on 0.0.0.0:$PORT from /app/public"
 
-# Start PHP built-in server - MUST use $PORT variable
+# Start PHP built-in server with custom ini settings
 cd /app
-exec php -S "0.0.0.0:${PORT}" -t public
+exec php -S "0.0.0.0:${PORT}" -t public \
+    -d max_execution_time=300 \
+    -d memory_limit=512M \
+    -d upload_max_filesize=50M \
+    -d post_max_size=50M \
+    -d max_input_time=300
