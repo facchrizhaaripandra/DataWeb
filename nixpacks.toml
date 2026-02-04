@@ -1,10 +1,10 @@
 [phases.setup]
-nixPkgs = ['...', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd']
-aptPkgs = ['tesseract-ocr']
+nixPkgs = ['...', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium']
+aptPkgs = ['tesseract-ocr', 'php8.3-gd']
 
 [phases.install]
 cmds = [
-  'composer install --optimize-autoloader --no-scripts --no-interaction --ignore-platform-req=ext-gd'
+  'composer install --optimize-autoloader --no-scripts --no-interaction'
 ]
 
 [phases.build]
