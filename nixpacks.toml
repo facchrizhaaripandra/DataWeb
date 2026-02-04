@@ -11,7 +11,8 @@ cmds = [
 cmds = [
   'npm ci',
   'npm run build',
-  'chmod +x start.sh'
+  'chmod +x start.sh',
+  'sed -i "s/listen = \/run\/php\/php8.3-fpm.sock/listen = 127.0.0.1:9000/" /etc/php/8.3/fpm/pool.d/www.conf'
 ]
 
 [start]
