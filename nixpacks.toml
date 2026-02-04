@@ -1,10 +1,10 @@
 [phases.setup]
-nixPkgs = ['php83', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd', 'php83Extensions.zip', 'php83Extensions.mbstring', 'php83Extensions.exif', 'nodejs', 'npm', 'nginx']
-aptPkgs = ['tesseract-ocr', 'libpng-dev', 'libjpeg-dev', 'libfreetype6-dev']
+nixPkgs = ['php83', 'php83Extensions.pdo_pgsql', 'php83Extensions.redis', 'php83Extensions.sodium', 'php83Extensions.gd', 'php83Extensions.zip', 'php83Extensions.mbstring', 'nodejs', 'npm', 'nginx']
+aptPkgs = ['tesseract-ocr']
 
 [phases.install]
 cmds = [
-    'composer install --optimize-autoloader --no-dev --ignore-platform-req=ext-gd'
+    'composer install --optimize-autoloader --no-dev --ignore-platform-reqs'
 ]
 
 [phases.build]

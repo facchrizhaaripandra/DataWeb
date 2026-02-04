@@ -101,6 +101,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "ext-gd": "8.3"
         }
     },
     "minimum-stability": "stable",
