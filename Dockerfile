@@ -49,4 +49,4 @@ COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80
 
 # Start services
-CMD service nginx start && php-fpm
+CMD php-fpm -D && nginx -g 'daemon off;'
