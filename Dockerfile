@@ -45,8 +45,12 @@ RUN chown -R www-data:www-data /var/www \
 # Configure Nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Copy and make start script executable
+COPY start.sh /var/www/start.sh
+RUN chmod +x /var/www/start.sh
+
 # Expose port
 EXPOSE 80
 
 # Start services
-CMD php-fpm -D && nginx -g 'daemon off;'
+CMD ./start.sh
