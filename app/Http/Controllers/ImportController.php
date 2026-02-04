@@ -43,18 +43,18 @@ class ImportController extends Controller
         try {
             // Read file data
             $data = Excel::toArray([], $file);
-            
+
             if (empty($data[0])) {
                 throw new \Exception('File kosong atau format tidak sesuai');
             }
 
             $allRows = $data[0];
             $hasHeader = $request->has_header;
-            
+
             // Determine column names
             $columns = [];
             $dataRows = [];
-            
+
             if ($hasHeader && !empty($allRows)) {
                 // Use first row as headers
                 $firstRow = $allRows[0];
@@ -83,11 +83,11 @@ class ImportController extends Controller
             if ($request->dataset_id) {
                 $dataset = Dataset::where('user_id', auth()->id())
                     ->findOrFail($request->dataset_id);
-                
+
                 // Add new columns if they don't exist
                 $existingColumns = $dataset->columns ?? [];
                 $newColumns = array_diff($columns, $existingColumns);
-                
+
                 if (!empty($newColumns)) {
                     $dataset->columns = array_merge($existingColumns, $newColumns);
                     $dataset->save();
@@ -95,7 +95,7 @@ class ImportController extends Controller
             } else {
                 $dataset = Dataset::create([
                     'name' => $request->dataset_name,
-                    'description' => 'Diimport dari: ' . $originalName . 
+                    'description' => 'Diimport dari: ' . $originalName .
                                    ($hasHeader ? ' (dengan header)' : ' (tanpa header)'),
                     'columns' => $columns,
                     'user_id' => auth()->id(),
@@ -107,15 +107,18 @@ class ImportController extends Controller
             $import = Import::create([
                 'filename' => $filename,
                 'original_name' => $originalName,
-                'status' => 'completed',
+                'status' => 'processing',
                 'user_id' => auth()->id(),
                 'dataset_id' => $dataset->id,
                 'row_count' => count($dataRows),
                 'has_header' => $hasHeader
             ]);
 
-            // Import data rows
+            // Import data rows synchronously for now
             $importedCount = $this->importDataRows($dataset, $dataRows, $columns);
+
+            // Update import status to completed
+            $import->update(['status' => 'completed']);
 
             return redirect()->route('datasets.show', $dataset->id)
                 ->with('success', 'File berhasil diimport! ' . $importedCount . ' baris ditambahkan.');
@@ -125,7 +128,7 @@ class ImportController extends Controller
             if (isset($filename) && Storage::exists('imports/' . $filename)) {
                 Storage::delete('imports/' . $filename);
             }
-            
+
             return redirect()->back()
                 ->with('error', 'Gagal mengimport file: ' . $e->getMessage())
                 ->withInput();

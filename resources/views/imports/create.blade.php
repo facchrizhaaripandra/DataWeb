@@ -297,7 +297,7 @@ function updatePreview() {
     formData.append('file', currentFile);
     formData.append('has_header', hasHeader);
     
-    fetch('{{ route("imports.preview") }}', {
+    fetch('/imports/preview', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
